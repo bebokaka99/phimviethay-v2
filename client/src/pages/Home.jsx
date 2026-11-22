@@ -12,6 +12,7 @@ const Home = () => {
 
   // Vsmov 22/11/2026: /danh-sach/hoat-hinh và /danh-sach/tv-shows 404,
   // /the-loai/tinh-cam 0 phim -> remap về endpoint có dữ liệu thật.
+  // TV Shows lấy đúng endpoint 'the-loai/truyen-hinh-thuc-te' để không trùng 'phim-bo'.
   const ROW_CONFIG = [
     { title: "Phim Lẻ Mới Cập Nhật", slug: "phim-le", type: "danh-sach" },
     { title: "Phim Bộ Hot", slug: "phim-bo", type: "danh-sach" },
@@ -20,7 +21,7 @@ const Home = () => {
     { title: "Phim Hàn Quốc", slug: "han-quoc", type: "quoc-gia" },
     { title: "Phim Trung Quốc", slug: "trung-quoc", type: "quoc-gia" },
     { title: "Hoạt Hình / Anime", slug: "hoat-hinh", type: "the-loai" },
-    { title: "TV Shows", slug: "phim-bo", type: "danh-sach" },
+    { title: "TV Shows", slug: "truyen-hinh-thuc-te", type: "the-loai" },
   ];
 
   useEffect(() => {

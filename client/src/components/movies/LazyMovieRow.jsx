@@ -33,8 +33,8 @@ const LazyMovieRow = ({ title, slug, type }) => {
 
     return (
         // Div giữ chỗ (Placeholder)
-        // Min-height giúp tránh layout shift (giật bố cục) khi load xong
-        <div ref={ref} className="min-h-[350px] transition-opacity duration-500">
+        // Min-height & contentVisibility giúp tránh layout shift và tối ưu render
+        <div ref={ref} className="min-h-[350px] transition-opacity duration-500" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 380px' }}>
             {isVisible && !loading && movies.length > 0 ? (
                 <MovieRow title={title} movies={movies} slug={slug} type={type} />
             ) : (

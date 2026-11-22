@@ -53,7 +53,8 @@ const normalizeList = (resData, titlePage) => {
 // /the-loai/tinh-cam trả 0 phim -> remap về endpoint có dữ liệu thật.
 const REMAP = {
     'danh-sach/hoat-hinh': { type: 'the-loai', slug: 'hoat-hinh' },
-    'danh-sach/tv-shows': { type: 'danh-sach', slug: 'phim-bo' },
+    'danh-sach/tv-shows': { type: 'the-loai', slug: 'truyen-hinh-thuc-te' },
+    'the-loai/tv-shows': { type: 'the-loai', slug: 'truyen-hinh-thuc-te' },
     'the-loai/tinh-cam': { type: 'the-loai', slug: 'lang-man' },
 };
 

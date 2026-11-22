@@ -145,6 +145,22 @@ body {
   animation: shake 0.3s ease-in-out;
 }
 
+/* Entrance lần lượt cho thẻ phim trong hàng */
+@keyframes rowCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-entrance {
+  animation: rowCardEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* --- 3. TÔN TRỌNG prefers-reduced-motion (UI 22/11/2026) --- */
 /* Người dùng bật "giảm chuyển động" thì tắt hết animation/transition để
    không gây khó chịu (hero tự chuyển, fade, scale, shimmer...). */

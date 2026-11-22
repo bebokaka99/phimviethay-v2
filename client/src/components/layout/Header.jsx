@@ -108,20 +108,20 @@ const Header = () => {
                             <li><Link to="/" className="hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg transition block">Trang chủ</Link></li>
                             <li className="group relative px-3 py-2 cursor-pointer hover:text-white">
                                 <span className="flex items-center gap-1">Danh sách <FaChevronDown size={8}/></span>
-                                <div className="absolute top-full left-0 w-48 bg-[#111]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden py-2">
+                                <div className="absolute top-full left-0 w-48 bg-[#111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden py-2">
                                     {listItems.map((item) => (<Link key={item.slug} to={`/danh-sach/${item.slug}`} className="block px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-colors">{item.name}</Link>))}
                                 </div>
                             </li>
                             <li className="group relative px-3 py-2 cursor-pointer hover:text-white">
                                 <span className="flex items-center gap-1">Thể loại <FaChevronDown size={8}/></span>
-                                <div className="absolute top-full left-0 w-[600px] bg-[#111]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden p-6">
+                                <div className="absolute top-full left-0 w-[600px] bg-[#111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden p-6">
                                     <div className="flex items-center gap-2 mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/10 pb-2"><FaLayerGroup className="text-red-600"/> Khám phá theo thể loại</div>
                                     <div className="grid grid-cols-4 gap-x-4 gap-y-2">{menuData.theLoai.slice(0, 24).map((item) => (<Link key={item._id} to={`/the-loai/${item.slug}`} className="text-sm text-gray-400 hover:text-white hover:translate-x-1 transition-all duration-200 block py-1">{item.name}</Link>))}</div>
                                 </div>
                             </li>
                             <li className="group relative px-3 py-2 cursor-pointer hover:text-white">
                                 <span className="flex items-center gap-1">Quốc gia <FaChevronDown size={8}/></span>
-                                <div className="absolute top-full left-0 w-[450px] bg-[#111]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden p-6">
+                                <div className="absolute top-full left-0 w-[450px] bg-[#111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden p-6">
                                     <div className="flex items-center gap-2 mb-4 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/10 pb-2"><FaGlobeAsia className="text-blue-500"/> Quốc gia sản xuất</div>
                                     <div className="grid grid-cols-3 gap-x-4 gap-y-2">{menuData.quocGia.slice(0, 18).map((item) => (<Link key={item._id} to={`/quoc-gia/${item.slug}`} className="text-sm text-gray-400 hover:text-white hover:translate-x-1 transition-all duration-200 block py-1">{item.name}</Link>))}</div>
                                 </div>
@@ -137,7 +137,7 @@ const Header = () => {
                             {showSearch && (<button onClick={() => { setShowSearch(false); setKeyword(''); setResults([]); }} className="absolute right-3 text-gray-500 hover:text-white transition">{isSearching ? <FaSpinner className="animate-spin text-red-500"/> : <FaTimes/>}</button>)}
                         </div>
                         {showSearch && keyword.length > 0 && results.length > 0 && (
-                            <div className="absolute top-full right-0 mt-3 w-[320px] bg-[#111]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up z-[110]">
+                            <div className="absolute top-full right-0 mt-3 w-[320px] bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up z-[110]">
                                 <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
                                     {results.slice(0, 5).map((movie) => (<Link key={movie._id} to={`/phim/${movie.slug}`} onClick={() => { setShowSearch(false); setKeyword(''); }} className="flex items-center gap-3 p-3 hover:bg-white/5 transition border-b border-white/5 last:border-0 group"><img src={movie.thumb_url} alt="" className="w-10 h-14 object-cover rounded-md shadow-md group-hover:scale-105 transition-transform" /><div className="flex-1 min-w-0"><h4 className="text-sm font-bold text-white truncate group-hover:text-red-500 transition">{movie.name}</h4><p className="text-xs text-gray-500 truncate mt-0.5">{movie.origin_name} • {movie.year}</p></div></Link>))}
                                     <div onClick={handleEnterSearch} className="p-3 text-center text-xs font-bold text-red-500 cursor-pointer hover:bg-white/5 transition uppercase tracking-wide">Xem tất cả kết quả</div>
@@ -148,7 +148,7 @@ const Header = () => {
                             <div className="relative group cursor-pointer py-2">
                                 <div className="flex items-center gap-2"><UserAvatar user={user} className="w-9 h-9 border border-white/10 group-hover:border-red-500 transition-colors" /></div>
                                 <div className="absolute top-full right-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 w-56 z-50">
-                                    <div className="bg-[#111]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+                                    <div className="bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
                                         <div className="px-4 py-3 border-b border-white/10 bg-white/5"><p className="text-sm font-bold text-white truncate">{user.fullname || user.username}</p><p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{user.role}</p></div>
                                         {(user.role === 'admin' || user.role === 'super_admin') && (<Link to="/admin" className="block px-4 py-2.5 text-sm text-yellow-500 hover:bg-white/5 hover:text-yellow-400 font-bold flex items-center gap-2"><FaChartBar/> Quản trị</Link>)}
                                         <Link to="/ho-so" className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2"><FaUser/> Hồ sơ cá nhân</Link>
@@ -163,7 +163,7 @@ const Header = () => {
                 </div>
             </header>
 
-            <div className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)} />
+            <div className={`fixed inset-0 bg-black/80 z-[150] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)} />
             <div className={`fixed top-0 left-0 w-[85%] max-w-[320px] h-full bg-[#0a0e17] z-[200] transform transition-transform duration-300 ease-out lg:hidden flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl border-r border-white/5`}>
                 <div className="p-6 border-b border-white/10 bg-gradient-to-r from-red-900/20 to-transparent">
                     <div className="flex justify-between items-center mb-6"><Logo /><button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition" aria-label="Đóng menu"><FaTimes size={16}/></button></div>

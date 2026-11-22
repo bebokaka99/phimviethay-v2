@@ -103,23 +103,18 @@ const MovieCard = memo(({ movie }) => {
 
     return (
         <>
-            <Link ref={cardRef} to={`/phim/${movie.slug}`} className="relative group cursor-pointer select-none h-full flex flex-col block transform hover:scale-[1.05] transition duration-300 z-10 hover:z-20" title={movie.name} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+            <Link ref={cardRef} to={`/phim/${movie.slug}`} className="relative group cursor-pointer select-none h-full flex flex-col block transform hover:scale-[1.04] transition duration-300 z-10 hover:z-20" title={movie.name} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                 
-                {/* [MỚI] GLASS/NEON EFFECT CONTAINER */}
+                {/* GLASS CONTAINER with hover ring & shadow (loại bỏ gradient blur-md tốn render) */}
                 <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden mb-3 bg-[#1a1a1a] shadow-xl transition-all duration-300 ring-1 ring-white/10 
-                            group-hover:shadow-[0_0_20px_rgba(220,38,38,0.7)] group-hover:bg-black/50 group-hover:backdrop-blur-[2px]">
-                    
-                    {/* [MỚI] GRADIENT BORDER EFFECT */}
-                    <div className="absolute inset-0 p-[2px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-red-600/80 to-red-900/20 opacity-70 blur-md"></div>
-                    </div>
+                            group-hover:ring-1 group-hover:ring-red-500/80 group-hover:shadow-[0_0_20px_rgba(220,38,38,0.7)] group-hover:bg-black/50 group-hover:backdrop-blur-[2px]">
 
                     <OptimizedImage src={posterUrl} width={320} alt={movie.name} className="w-full h-full object-cover transform transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-80" />
                     
                     {/* Badge/Info (Giữ nguyên) */}
                     <div className="absolute top-2 left-2"><span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase">{movie.quality || 'HD'}</span></div>
                     {displayRating && (<div className="absolute top-2 right-2"><span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">{displayRating} <FaStar size={8} /></span></div>)}
-                    {movie.episode_current && (<div className="absolute bottom-2 right-2 z-10"><span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">{movie.episode_current}</span></div>)}
+                    {movie.episode_current && (<div className="absolute bottom-2 right-2 z-10"><span className="bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">{movie.episode_current}</span></div>)}
                     
                     {/* Play Icon (Nổi bật hơn) */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">

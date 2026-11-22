@@ -1,19 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaInfoCircle, FaStar } from 'react-icons/fa';
+import { FaPlay, FaInfoCircle, FaStar, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { IMG_URL, getMovieDetail } from '../../services/movieService';
 import OptimizedImage from '../common/OptimizedImage';
 
 const HeroSection = ({ movies }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [heroMovies, setHeroMovies] = useState([]);
-    // UI 22/11/2026: dừng tự chuyển slide khi người dùng rê chuột vào hero
-    // (đang đọc mà slide tự đổi thì khó chịu).
-    const [isPaused, setIsPaused] = useState(false);
+    
+    // Đồng bộ đồng hồ: các trạng thái tạm dừng tự chuyển
+    const [isHovered, setIsHovered] = useState(false);
+    const [isTabVisible, setIsTabVisible] = useState(true);
+    const [isHeroOnScreen, setIsHeroOnScreen] = useState(true);
+    const [isTouchPaused, setIsTouchPaused] = useState(false);
+
+    // Vuốt trên mobile (Touch Swipe)
+    const [touchStartX, setTouchStartX] = useState(0);
+    const [touchDeltaX, setTouchDeltaX] = useState(0);
+    const [isSwiping, setIsSwiping] = useState(false);
+
+    const heroRef = useRef(null);
+    const touchPauseTimeout = useRef(null);
 
     // Tối ưu 22/11/2026: hiện hero NGAY bằng dữ liệu danh sách (đã có sẵn
     // poster/thumb/content), rồi mới gọi 5 API chi tiết ở nền để bổ sung
-    // (trước đây phải chờ cả 5 API xong hero mới hiện -> chậm ~1s).
     useEffect(() => {
         if (!movies || movies.length === 0) return;
         const top5 = movies.slice(0, 5);
@@ -38,13 +48,81 @@ const HeroSection = ({ movies }) => {
         enhance();
     }, [movies]);
 
+    // Xử lý chuyển slide prev/next
+    const handlePrev = useCallback(() => {
+        setCurrentIndex(prev => (prev === 0 ? heroMovies.length - 1 : prev - 1));
+    }, [heroMovies.length]);
+
+    const handleNext = useCallback(() => {
+        setCurrentIndex(prev => (prev === heroMovies.length - 1 ? 0 : prev + 1));
+    }, [heroMovies.length]);
+
+    // Lắng nghe khi tab ẩn / hiện (document.visibilitychange)
     useEffect(() => {
-        if (heroMovies.length === 0 || isPaused) return;
+        const handleVisibility = () => {
+            setIsTabVisible(document.visibilityState === 'visible');
+        };
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, []);
+
+    // Lắng nghe khi Hero ra ngoài màn hình (IntersectionObserver)
+    useEffect(() => {
+        const el = heroRef.current;
+        if (!el) return;
+        const observer = new IntersectionObserver(([entry]) => {
+            setIsHeroOnScreen(entry.isIntersecting);
+        }, { threshold: 0.15 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    // Tổng hợp điều kiện dừng
+    const shouldPause = isHovered || !isTabVisible || !isHeroOnScreen || isTouchPaused || isSwiping;
+
+    // Bộ đếm duy nhất 8 giây chuyển slide
+    useEffect(() => {
+        if (heroMovies.length === 0 || shouldPause) return;
         const interval = setInterval(() => {
-            setCurrentIndex(prev => (prev === heroMovies.length - 1 ? 0 : prev + 1));
+            handleNext();
         }, 8000);
         return () => clearInterval(interval);
-    }, [currentIndex, heroMovies, isPaused]);
+    }, [currentIndex, heroMovies.length, shouldPause, handleNext]);
+
+    // Xử lý vuốt trên thiết bị di động
+    const handleTouchStart = (e) => {
+        if (e.touches && e.touches.length === 1) {
+            setTouchStartX(e.touches[0].clientX);
+            setTouchDeltaX(0);
+            setIsSwiping(true);
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (!isSwiping || !e.touches || e.touches.length !== 1) return;
+        const delta = e.touches[0].clientX - touchStartX;
+        const clamped = Math.max(-120, Math.min(120, delta));
+        setTouchDeltaX(clamped);
+    };
+
+    const handleTouchEnd = () => {
+        if (!isSwiping) return;
+        setIsSwiping(false);
+
+        if (touchDeltaX < -45) {
+            handleNext();
+        } else if (touchDeltaX > 45) {
+            handlePrev();
+        }
+        setTouchDeltaX(0);
+
+        // Tạm dừng tự chuyển trong 5 giây sau khi vuốt
+        setIsTouchPaused(true);
+        if (touchPauseTimeout.current) clearTimeout(touchPauseTimeout.current);
+        touchPauseTimeout.current = setTimeout(() => {
+            setIsTouchPaused(false);
+        }, 5000);
+    };
 
     const stripHtml = (html) => {
         if (!html) return "";
@@ -54,11 +132,32 @@ const HeroSection = ({ movies }) => {
     if (heroMovies.length === 0) return null;
 
     return (
-        // [MOBILE]: h-[60vh] là tỷ lệ đẹp để chứa đủ ảnh + 3 dòng mô tả mà không bị chật
-        <div className="relative h-[60vh] md:h-[700px] w-full text-white overflow-hidden group bg-[#0a0e17]"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
+        <div 
+            ref={heroRef}
+            className="relative h-[60vh] md:h-[700px] w-full text-white overflow-hidden group bg-[#0a0e17] touch-pan-y select-none"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
         >
+            {/* Nút Prev / Next ở 2 bên Hero (Desktop) */}
+            <button 
+                onClick={handlePrev}
+                className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-[#0a0e17]/80 border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:border-red-600 transition-all duration-300 shadow-xl"
+                aria-label="Slide trước"
+            >
+                <FaChevronLeft size={16} />
+            </button>
+            <button 
+                onClick={handleNext}
+                className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-[#0a0e17]/80 border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:border-red-600 transition-all duration-300 shadow-xl"
+                aria-label="Slide tiếp theo"
+            >
+                <FaChevronRight size={16} />
+            </button>
+
+            {/* Các slide phim */}
             {heroMovies.map((movie, index) => {
                 const isActive = index === currentIndex;
 
@@ -67,7 +166,6 @@ const HeroSection = ({ movies }) => {
                                     : `${IMG_URL}${movie.poster_url || movie.thumb_url}`;
 
                 const posterThumb = `${IMG_URL}${movie.thumb_url}`;
-                // Vsmov trả vote_average dạng STRING ("6.9") -> ép Number trước khi .toFixed()
                 const ratingValue = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
                 const displayRating = ratingValue > 0 ? ratingValue.toFixed(1) : null;
 
@@ -77,6 +175,10 @@ const HeroSection = ({ movies }) => {
                         className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                             isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
                         }`}
+                        style={{
+                            transform: isActive && isSwiping && touchDeltaX !== 0 ? `translateX(${touchDeltaX}px)` : undefined,
+                            transition: isSwiping ? 'none' : undefined
+                        }}
                     >
                         {/* 1. BACKGROUND IMAGE with subtle Ken Burns zoom */}
                         <div className="absolute inset-0 overflow-hidden">
@@ -209,7 +311,7 @@ const HeroSection = ({ movies }) => {
                                         style={{ 
                                             width: '100%',
                                             animation: 'heroProgress 8s linear forwards',
-                                            animationPlayState: isPaused ? 'paused' : 'running' 
+                                            animationPlayState: shouldPause ? 'paused' : 'running' 
                                         }} 
                                     />
                                 )}
@@ -239,7 +341,7 @@ const HeroSection = ({ movies }) => {
                                     style={{
                                         width: '100%',
                                         animation: 'heroProgress 8s linear forwards',
-                                        animationPlayState: isPaused ? 'paused' : 'running'
+                                        animationPlayState: shouldPause ? 'paused' : 'running'
                                     }}
                                 />
                             )}
