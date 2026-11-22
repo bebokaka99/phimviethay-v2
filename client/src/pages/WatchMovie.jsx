@@ -17,6 +17,7 @@ import CommentSection from '../components/comments/CommentSection';
 // bằng miếng phủ (xem coverLogo bên dưới).
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
+import siteLogo from '../assets/logo.png';
 
 const Toast = ({ message, onClose }) => {
     useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
@@ -236,6 +237,23 @@ const WatchMovie = () => {
                             {coverLogo && currentEpisode?.link_embed && (
                                 <div className="absolute z-30 pointer-events-none bg-black/60 backdrop-blur-2xl rounded-md" style={{ top: '11%', right: '3%', width: '18%', height: '12%' }} title="Miếng che watermark (thử nghiệm)" />
                             )}
+                            {/* Logo web đè lên logo VSmov ở thanh điều khiển của trình nhúng (22/11/2026).
+                                Iframe khác origin nên KHÔNG sửa được bên trong nó — chỉ đè lên được
+                                bằng overlay như miếng che watermark. Vị trí đo thật bằng Chrome
+                                headless ngày 22/11/2026 (player rộng 891px): tâm logo VSmov cách mép
+                                phải khung phát 249px, cách đáy 41px, logo rộng ~89px — nên overlay
+                                neo theo mép PHẢI (nhóm nút PiP/Cài đặt/Toàn màn hình có bề rộng cố
+                                định, neo phải giữ đúng vị trí cả khi xem rạp chiếu) và cao 36px để
+                                che kín. Logo phải đặt trên nền đen đặc vì ảnh logo có nền trong suốt
+                                — không có nền thì chữ VSmov vẫn lộ qua khe chữ. Logo luôn hiện (kể cả
+                                khi thanh điều khiển tự ẩn), bấm để về trang chủ. Không có tác dụng
+                                khi xem toàn màn hình (iframe tự fullscreen) và chỉ hiện từ màn hình
+                                md trở lên để khỏi đè nút điều khiển trên điện thoại. */}
+                            {currentEpisode?.link_embed && (
+                                <Link to="/" title="PhimVietHay — về trang chủ" className="absolute z-30 hidden md:flex items-center bg-black rounded-md px-2 py-1" style={{ bottom: 19, right: 249, transform: 'translateX(50%)' }}>
+                                    <img src={siteLogo} alt="PhimVietHay" className="h-9 w-auto opacity-90 hover:opacity-100 transition" />
+                                </Link>
+                            )}
                         </div>
 
                         <div className="mt-0 md:mt-4 bg-gradient-to-r from-black/80 to-black/60 border-b md:border border-white/10 border-t-white/5 p-3 md:rounded-lg backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
@@ -253,7 +271,7 @@ const WatchMovie = () => {
                         </div>
 
                         {!isLightOff && currentEpisode?.link_embed && (
-                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này. Nút con mắt che logo góc phải là thử nghiệm (không có tác dụng khi xem toàn màn hình).</p>
+                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này. Nút con mắt che logo góc phải là thử nghiệm (không có tác dụng khi xem toàn màn hình). Logo PhimVietHay ở thanh điều khiển thay cho logo VSmov, bấm để về trang chủ (cũng mất tác dụng khi xem toàn màn hình).</p>
                         )}
 
                         {!isLightOff && (
