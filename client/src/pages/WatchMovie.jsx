@@ -4,14 +4,17 @@ import { Helmet } from 'react-helmet-async';
 import {
     FaPlay, FaList, FaLightbulb, FaStar, FaStepForward,
     FaArrowLeft, FaExpand, FaClock, FaGlobe, FaUsers, FaHeart,
-    FaHome, FaAngleRight
+    FaHome, FaAngleRight, FaEye, FaEyeSlash
 } from 'react-icons/fa';
 
 import MovieRow from '../components/movies/MovieRow';
 import CommentSection from '../components/comments/CommentSection';
 // Player iframe embed (22/11/2026): vsmov chỉ có link_embed, không có link_m3u8
 // nên Artplayer không phát được. VideoPlayer.jsx giữ lại cho hướng resolve m3u8 sau này.
-
+// LƯU Ý 22/11/2026: m3u8 của vsmov KHÔNG phải video thật — playlist toàn ảnh PNG
+// tĩnh (657 ảnh, mỗi ảnh 6s, không có tiếng), trình nhúng chỉ chiếu slideshow.
+// Vì vậy server Artplayer từ m3u8 này KHÔNG làm được; chỉ còn cách che watermark
+// bằng miếng phủ (xem coverLogo bên dưới).
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
 
@@ -49,6 +52,12 @@ const WatchMovie = () => {
     const [toastMsg, setToastMsg] = useState('');
     const [isFavorite, setIsFavorite] = useState(false);
     const [watchedEpisodes, setWatchedEpisodes] = useState([]);
+    // Thử nghiệm che watermark (22/11/2026): miếng phủ mờ đè lên góc phải trên
+    // của khung phát, vị trí căn theo phim test "Lời Nói Dối Hoàn Hảo" (video
+    // 2.39:1, logo VSbet nằm ~15-21% chiều cao, ~83-91% chiều rộng khung phát).
+    // Phim tỉ lệ khác logo có thể lệch vị trí; xem toàn màn hình thì miếng phủ
+    // không có tác dụng vì iframe tự fullscreen.
+    const [coverLogo, setCoverLogo] = useState(true);
 
     const showToast = (msg) => setToastMsg(msg);
     const getActorImg = (path) => path ? `https://image.tmdb.org/t/p/w200${path}` : null;
@@ -224,6 +233,9 @@ const WatchMovie = () => {
                                     <div className="flex items-center justify-center h-full text-gray-400 bg-gray-900 px-6 text-center"><p>Tập này chưa có link phát. Thử đổi server khác bên phải.</p></div>
                                 )
                             ) : <div className="flex items-center justify-center h-full text-gray-500 bg-gray-900"><p>Đang tải...</p></div>}
+                            {coverLogo && currentEpisode?.link_embed && (
+                                <div className="absolute z-30 pointer-events-none bg-black rounded-md" style={{ top: '11%', right: '3%', width: '18%', height: '12%' }} title="Miếng che watermark (thử nghiệm)" />
+                            )}
                         </div>
 
                         <div className="mt-0 md:mt-4 bg-gradient-to-r from-black/80 to-black/60 border-b md:border border-white/10 border-t-white/5 p-3 md:rounded-lg backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
@@ -233,6 +245,7 @@ const WatchMovie = () => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={handleToggleFavorite} className={`p-2.5 rounded-full transition-all ${isFavorite ? 'text-red-500 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`} title={isFavorite ? "Bỏ theo dõi" : "Theo dõi phim"}><FaHeart /></button>
+                                <button onClick={() => setCoverLogo(!coverLogo)} className={`p-2.5 rounded-full transition-all ${coverLogo ? 'text-red-500 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`} title={coverLogo ? "Đang che logo — bấm để hiện lại" : "Che logo góc phải (thử nghiệm)"}>{coverLogo ? <FaEyeSlash /> : <FaEye />}</button>
                                 <button onClick={() => setIsLightOff(!isLightOff)} className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 transition-all" title="Tắt đèn"><FaLightbulb /></button>
                                 <button onClick={() => setIsTheater(!isTheater)} className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 hidden md:block transition-all" title="Rạp chiếu"><FaExpand /></button>
                                 <button onClick={() => navigate(`/phim/${movie.slug}`)} className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 transition-all" title="Chi tiết"><FaArrowLeft /></button>
@@ -240,7 +253,7 @@ const WatchMovie = () => {
                         </div>
 
                         {!isLightOff && currentEpisode?.link_embed && (
-                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này.</p>
+                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này. Nút con mắt che logo góc phải là thử nghiệm (không có tác dụng khi xem toàn màn hình).</p>
                         )}
 
                         {!isLightOff && (
