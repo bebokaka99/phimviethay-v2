@@ -52,11 +52,11 @@ const WatchMovie = () => {
     const [toastMsg, setToastMsg] = useState('');
     const [isFavorite, setIsFavorite] = useState(false);
     const [watchedEpisodes, setWatchedEpisodes] = useState([]);
-    // Thử nghiệm che watermark (22/11/2026): miếng phủ mờ đè lên góc phải trên
-    // của khung phát, vị trí căn theo phim test "Lời Nói Dối Hoàn Hảo" (video
-    // 2.39:1, logo VSbet nằm ~15-21% chiều cao, ~83-91% chiều rộng khung phát).
-    // Phim tỉ lệ khác logo có thể lệch vị trí; xem toàn màn hình thì miếng phủ
-    // không có tác dụng vì iframe tự fullscreen.
+    // Thử nghiệm che watermark (22/11/2026): miếng phủ mờ (blur) đè lên góc phải
+    // trên của khung phát, vị trí căn theo phim test "Lời Nói Dối Hoàn Hảo"
+    // (video 2.39:1, logo VSbet nằm ~15-21% chiều cao, ~83-91% chiều rộng
+    // khung phát). Phim tỉ lệ khác logo có thể lệch vị trí; xem toàn màn hình
+    // thì miếng phủ không có tác dụng vì iframe tự fullscreen.
     const [coverLogo, setCoverLogo] = useState(true);
 
     const showToast = (msg) => setToastMsg(msg);
@@ -234,7 +234,7 @@ const WatchMovie = () => {
                                 )
                             ) : <div className="flex items-center justify-center h-full text-gray-500 bg-gray-900"><p>Đang tải...</p></div>}
                             {coverLogo && currentEpisode?.link_embed && (
-                                <div className="absolute z-30 pointer-events-none bg-black rounded-md" style={{ top: '11%', right: '3%', width: '18%', height: '12%' }} title="Miếng che watermark (thử nghiệm)" />
+                                <div className="absolute z-30 pointer-events-none bg-black/60 backdrop-blur-2xl rounded-md" style={{ top: '11%', right: '3%', width: '18%', height: '12%' }} title="Miếng che watermark (thử nghiệm)" />
                             )}
                         </div>
 
