@@ -2,16 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaPlay, FaInfoCircle, FaStar } from 'react-icons/fa';
 import { IMG_URL, getMovieDetail } from '../../services/movieService';
+import OptimizedImage from '../common/OptimizedImage';
 
 const HeroSection = ({ movies }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [heroMovies, setHeroMovies] = useState([]);
+    // UI 22/11/2026: dừng tự chuyển slide khi người dùng rê chuột vào hero
+    // (đang đọc mà slide tự đổi thì khó chịu).
+    const [isPaused, setIsPaused] = useState(false);
 
-    // --- GIỮ NGUYÊN LOGIC CŨ 100% (START) ---
+    // Tối ưu 22/11/2026: hiện hero NGAY bằng dữ liệu danh sách (đã có sẵn
+    // poster/thumb/content), rồi mới gọi 5 API chi tiết ở nền để bổ sung
+    // (trước đây phải chờ cả 5 API xong hero mới hiện -> chậm ~1s).
     useEffect(() => {
-        const fetchHighQualityImages = async () => {
-            if (!movies || movies.length === 0) return;
-            const top5 = movies.slice(0, 5);
+        if (!movies || movies.length === 0) return;
+        const top5 = movies.slice(0, 5);
+        setHeroMovies(top5);
+        const enhance = async () => {
             const updatedMovies = await Promise.all(top5.map(async (movie) => {
                 try {
                     const data = await getMovieDetail(movie.slug);
@@ -28,16 +35,16 @@ const HeroSection = ({ movies }) => {
             }));
             setHeroMovies(updatedMovies);
         };
-        fetchHighQualityImages();
+        enhance();
     }, [movies]);
 
     useEffect(() => {
-        if (heroMovies.length === 0) return;
+        if (heroMovies.length === 0 || isPaused) return;
         const interval = setInterval(() => {
             setCurrentIndex(prev => (prev === heroMovies.length - 1 ? 0 : prev + 1));
         }, 8000);
         return () => clearInterval(interval);
-    }, [currentIndex, heroMovies]);
+    }, [currentIndex, heroMovies, isPaused]);
 
     const stripHtml = (html) => {
         if (!html) return "";
@@ -47,18 +54,12 @@ const HeroSection = ({ movies }) => {
 
     if (heroMovies.length === 0) return null;
 
-    // Helper tạo link ảnh tối ưu
-    const getOptimizedImg = (url, isMobile = false) => {
-        if (!url) return '';
-        if (url.includes('http') && !url.includes('image.tmdb.org')) return url;
-        const cleanPath = url.replace(IMG_URL, '');
-        const size = isMobile ? 'w780' : 'original';
-        return `https://image.tmdb.org/t/p/${size}${cleanPath}`;
-    };
-
     return (
         // [MOBILE]: h-[60vh] là tỷ lệ đẹp để chứa đủ ảnh + 3 dòng mô tả mà không bị chật
-        <div className="relative h-[60vh] md:h-[700px] w-full text-white overflow-hidden group bg-[#0a0e17]">
+        <div className="relative h-[60vh] md:h-[700px] w-full text-white overflow-hidden group bg-[#0a0e17]"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+        >
             
             {heroMovies.map((movie, index) => {
                 const isActive = index === currentIndex;
@@ -67,15 +68,16 @@ const HeroSection = ({ movies }) => {
                 if (!shouldRender) return null;
 
                 const rawBackdrop = movie.poster_url || movie.thumb_url;
-                const mobileImg = getOptimizedImg(rawBackdrop, true);
-                const desktopImg = movie.poster_url && movie.poster_url.includes('http') 
-                                    ? movie.poster_url 
+                const desktopImg = movie.poster_url && movie.poster_url.includes('http')
+                                    ? movie.poster_url
                                     : `${IMG_URL}${movie.poster_url || movie.thumb_url}`;
-                
+
                 const posterThumb = `${IMG_URL}${movie.thumb_url}`;
                 // Vsmov trả vote_average dạng STRING ("6.9") -> ép Number trước khi .toFixed()
                 const ratingValue = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
-                const displayRating = ratingValue > 0 ? ratingValue.toFixed(1) : 'N/A';
+                // UI 22/11/2026: không có điểm / không có ngôn ngữ thì ẨN pill
+                // (trước đây hiện "N/A" vàng và 1 pill trống).
+                const displayRating = ratingValue > 0 ? ratingValue.toFixed(1) : null;
 
                 return (
                     <div 
@@ -84,13 +86,14 @@ const HeroSection = ({ movies }) => {
                     >
                         {/* 1. BACKGROUND IMAGE */}
                         <div className="absolute inset-0">
-                             <img 
+                             <OptimizedImage
                                 src={desktopImg}
-                                srcSet={`${mobileImg} 768w, ${desktopImg} 1280w`}
+                                width={1440}
                                 alt={movie.name}
                                 // object-top: Luôn lấy phần trên của ảnh (thường là mặt diễn viên)
                                 className="w-full h-full object-cover object-top"
-                                loading={index === 0 ? "eager" : "lazy"} 
+                                eager={index === 0}
+                                fetchPriority={index === 0 ? 'high' : undefined}
                             />
                             {/* Gradient Overlay: Mobile đậm hơn ở dưới (80%) để chữ trắng nổi bật */}
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e17] via-[#0a0e17]/40 to-transparent md:bg-gradient-to-r md:from-[#0a0e17] md:via-[#0a0e17]/60 md:to-transparent" />
@@ -115,18 +118,18 @@ const HeroSection = ({ movies }) => {
 
                                     {/* Meta Data */}
                                     <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-base font-medium text-gray-200">
-                                        <span className="flex items-center gap-1 text-yellow-400 font-bold text-sm md:text-lg">
+                                        {displayRating && (<span className="flex items-center gap-1 text-yellow-400 font-bold text-sm md:text-lg">
                                             <FaStar /> {displayRating}
-                                        </span>
+                                        </span>)}
                                         <span className="bg-white/10 border border-white/10 px-2 py-0.5 md:px-3 md:py-1 rounded">
                                             {movie.year}
                                         </span>
                                         <span className="bg-red-600 px-2 py-0.5 md:px-3 md:py-1 rounded text-white font-bold uppercase tracking-wider shadow-lg shadow-red-900/40 text-[10px] md:text-sm">
                                             {movie.quality || 'HD'}
                                         </span>
-                                        <span className="text-gray-300 border border-gray-500 px-2 py-0.5 md:px-3 md:py-1 rounded uppercase text-[10px] md:text-sm">
+                                        {movie.lang && (<span className="text-gray-300 border border-gray-500 px-2 py-0.5 md:px-3 md:py-1 rounded uppercase text-[10px] md:text-sm">
                                             {movie.lang}
-                                        </span>
+                                        </span>)}
                                     </div>
 
                                     {/* [FIX MOBILE]: line-clamp-3 (Hiện mô tả nhưng tối đa 3 dòng) */}
@@ -159,7 +162,7 @@ const HeroSection = ({ movies }) => {
                                         className="block w-[280px] aspect-[2/3] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 transform rotate-3 hover:rotate-0 transition duration-700 ease-out group-hover:scale-105"
                                     >
                                         
-                                        <img src={posterThumb} alt={movie.name} className="w-full h-full object-cover" />
+                                        <OptimizedImage src={posterThumb} width={320} alt={movie.name} className="w-full h-full object-cover" />
                                     </Link>
                                 </div>
                             </div>
@@ -182,8 +185,8 @@ const HeroSection = ({ movies }) => {
                                 isActive ? 'scale-110 -translate-y-1 shadow-lg border border-white/50 z-10 opacity-100' : 'opacity-60 hover:opacity-100 hover:scale-105 grayscale hover:grayscale-0 border border-white/10'
                             }`}
                         >
-                            <img src={thumbWide} alt="" className="w-full h-full object-cover" />
-                            {isActive && <div className="absolute bottom-0 left-0 h-[3px] bg-red-600 z-20" style={{ width: '100%', animation: 'loadingBar 8s linear infinite' }} />}
+                            <OptimizedImage src={thumbWide} width={192} alt="" className="w-full h-full object-cover" />
+                            {isActive && <div className="absolute bottom-0 left-0 h-[3px] bg-red-600 z-20" style={{ width: '100%', animation: 'loadingBar 8s linear infinite', animationPlayState: isPaused ? 'paused' : 'running' }} />}
                         </div>
                     );
                 })}

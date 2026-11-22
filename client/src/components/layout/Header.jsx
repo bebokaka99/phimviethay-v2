@@ -21,6 +21,13 @@ const Header = () => {
     const [isSearching, setIsSearching] = useState(false);
     const debouncedKeyword = useDebounce(keyword, 500);
     const searchRef = useRef(null);
+    const searchInputRef = useRef(null);
+
+    // UI 22/11/2026: mở ô tìm kiếm thì tự focus để gõ ngay (trước đây mở
+    // ra nhưng không focus, phải bấm thêm 1 lần vào ô).
+    useEffect(() => {
+        if (showSearch && searchInputRef.current) searchInputRef.current.focus();
+    }, [showSearch]);
 
     const listItems = [
         { name: 'Phim Mới', slug: 'phim-moi' }, { name: 'Phim Bộ', slug: 'phim-bo' }, { name: 'Phim Lẻ', slug: 'phim-le' },
@@ -126,7 +133,7 @@ const Header = () => {
                     <div className="flex items-center gap-3 lg:gap-5" ref={searchRef}>
                         <div className={`relative flex items-center transition-all duration-300 ease-out ${showSearch ? 'w-[200px] sm:w-[300px] bg-[#1a1a1a] border-white/20' : 'w-10 bg-transparent border-transparent'} border rounded-full overflow-hidden h-10`}>
                             <button onClick={() => setShowSearch(!showSearch)} className={`absolute left-0 top-0 w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white transition-colors z-10`}><FaSearch className="text-sm"/></button>
-                            <form onSubmit={handleEnterSearch} className={`flex-1 pl-10 pr-8 h-full transition-opacity duration-200 ${showSearch ? 'opacity-100' : 'opacity-0'}`}><input type="text" placeholder="Tìm kiếm phim..." className="w-full h-full bg-transparent text-sm text-white placeholder-gray-500 outline-none" value={keyword} onChange={(e) => setKeyword(e.target.value)} /></form>
+                            <form onSubmit={handleEnterSearch} className={`flex-1 pl-10 pr-8 h-full transition-opacity duration-200 ${showSearch ? 'opacity-100' : 'opacity-0'}`}><input ref={searchInputRef} type="text" placeholder="Tìm kiếm phim..." className="w-full h-full bg-transparent text-sm text-white placeholder-gray-500 outline-none" value={keyword} onChange={(e) => setKeyword(e.target.value)} /></form>
                             {showSearch && (<button onClick={() => { setShowSearch(false); setKeyword(''); setResults([]); }} className="absolute right-3 text-gray-500 hover:text-white transition">{isSearching ? <FaSpinner className="animate-spin text-red-500"/> : <FaTimes/>}</button>)}
                         </div>
                         {showSearch && keyword.length > 0 && results.length > 0 && (
@@ -159,7 +166,7 @@ const Header = () => {
             <div className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] transition-opacity duration-300 lg:hidden ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)} />
             <div className={`fixed top-0 left-0 w-[85%] max-w-[320px] h-full bg-[#0a0e17] z-[200] transform transition-transform duration-300 ease-out lg:hidden flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl border-r border-white/5`}>
                 <div className="p-6 border-b border-white/10 bg-gradient-to-r from-red-900/20 to-transparent">
-                    <div className="flex justify-between items-center mb-6"><Logo /><button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition"><FaTimes size={14}/></button></div>
+                    <div className="flex justify-between items-center mb-6"><Logo /><button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition" aria-label="Đóng menu"><FaTimes size={16}/></button></div>
                     {user ? (<div className="flex items-center gap-3"><UserAvatar user={user} className="w-10 h-10 border border-white/20" /><div><p className="text-white font-bold text-sm truncate w-32">{user.fullname || user.username}</p><p className="text-[10px] text-gray-500 uppercase font-bold">{user.role}</p></div></div>) : (<div className="grid grid-cols-2 gap-3"><Link to="/login" className="bg-red-600 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng nhập</Link><Link to="/register" className="border border-white/20 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng ký</Link></div>)}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
@@ -168,6 +175,7 @@ const Header = () => {
                     <Link to="/watch-party" className="flex items-center gap-3 py-3 px-4 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition font-medium"><span className="w-5"><FaFilm className="text-purple-500"/></span> Rạp Phim Online</Link>
                     <div className="py-2"><button onClick={() => toggleMobileSubmenu('danh-sach')} className="w-full flex justify-between items-center py-3 px-4 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition font-medium"><div className="flex items-center gap-3"><span className="w-5"><FaList/></span> Danh Sách</div><FaChevronDown className={`text-xs transition-transform ${activeMobileSubmenu === 'danh-sach' ? 'rotate-180' : ''}`}/></button><div className={`overflow-hidden transition-all duration-300 ${activeMobileSubmenu === 'danh-sach' ? 'max-h-[500px]' : 'max-h-0'}`}><div className="bg-black/20 rounded-lg m-2 p-2 grid grid-cols-2 gap-2">{listItems.map(item => (<Link key={item.slug} to={`/danh-sach/${item.slug}`} className="text-xs text-gray-400 hover:text-white p-2 hover:bg-white/5 rounded block">{item.name}</Link>))}</div></div></div>
                     <div className="py-2"><button onClick={() => toggleMobileSubmenu('the-loai')} className="w-full flex justify-between items-center py-3 px-4 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition font-medium"><div className="flex items-center gap-3"><span className="w-5"><FaLayerGroup/></span> Thể Loại</div><FaChevronDown className={`text-xs transition-transform ${activeMobileSubmenu === 'the-loai' ? 'rotate-180' : ''}`}/></button><div className={`overflow-hidden transition-all duration-300 ${activeMobileSubmenu === 'the-loai' ? 'max-h-[500px]' : 'max-h-0'}`}><div className="bg-black/20 rounded-lg m-2 p-2 grid grid-cols-2 gap-2">{menuData.theLoai.map(item => (<Link key={item._id} to={`/the-loai/${item.slug}`} className="text-xs text-gray-400 hover:text-white p-2 hover:bg-white/5 rounded block truncate">{item.name}</Link>))}</div></div></div>
+                    <div className="py-2"><button onClick={() => toggleMobileSubmenu('quoc-gia')} className="w-full flex justify-between items-center py-3 px-4 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition font-medium"><div className="flex items-center gap-3"><span className="w-5"><FaGlobeAsia/></span> Quốc Gia</div><FaChevronDown className={`text-xs transition-transform ${activeMobileSubmenu === 'quoc-gia' ? 'rotate-180' : ''}`}/></button><div className={`overflow-hidden transition-all duration-300 ${activeMobileSubmenu === 'quoc-gia' ? 'max-h-[500px]' : 'max-h-0'}`}><div className="bg-black/20 rounded-lg m-2 p-2 grid grid-cols-2 gap-2">{menuData.quocGia.map(item => (<Link key={item._id} to={`/quoc-gia/${item.slug}`} className="text-xs text-gray-400 hover:text-white p-2 hover:bg-white/5 rounded block truncate">{item.name}</Link>))}</div></div></div>
                 </div>
                 {user && (<div className="p-4 border-t border-white/5 bg-black/20"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 bg-red-900/10 text-red-500 border border-red-900/30 py-3 rounded-xl font-bold hover:bg-red-900/30 transition text-sm"><FaSignOutAlt /> Đăng Xuất</button></div>)}
             </div>

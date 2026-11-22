@@ -144,3 +144,17 @@ body {
 .animate-shake {
   animation: shake 0.3s ease-in-out;
 }
+
+/* --- 3. TÔN TRỌNG prefers-reduced-motion (UI 22/11/2026) --- */
+/* Người dùng bật "giảm chuyển động" thì tắt hết animation/transition để
+   không gây khó chịu (hero tự chuyển, fade, scale, shimmer...). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

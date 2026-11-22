@@ -1,21 +1,24 @@
 import React, { memo, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { FaPlay, FaStar, FaInfoCircle, FaPlayCircle } from 'react-icons/fa';
-import { IMG_URL, getMovieDetail } from '../../services/movieService';
+import { IMG_URL } from '../../services/movieService';
+import OptimizedImage from '../common/OptimizedImage';
 
 const MovieCard = memo(({ movie }) => {
+    const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
-    const [detailData, setDetailData] = useState(null);
     const cardRef = useRef(null);
     const entryTimer = useRef(null);
     const exitTimer = useRef(null);
 
-    // Vsmov trả vote_average dạng STRING ("6.9"), Ophim trả number.
-    // Không ép Number thì .toFixed() crash cả trang (lỗi gặp 22/11/2026).
+    // UI 22/11/2026: không có điểm thì ẨN badge điểm (trước đây hiện "N/A"
+    // màu vàng, nhìn như phim bị chê); không có số tập thì ẨN badge tập
+    // (API danh sách không trả episode_current nên trước đây mọi thẻ đều
+    // hiện "Full", kể cả phim bộ đang chiếu).
     const ratingVal = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
-    const displayRating = ratingVal > 0 ? ratingVal.toFixed(1) : 'N/A';
+    const displayRating = ratingVal > 0 ? ratingVal.toFixed(1) : null;
     const year = movie.year || movie.category?.[0]?.name || 'Unknown';
     const posterUrl = `${IMG_URL}${movie.thumb_url}`;
     const backdropUrl = movie.poster_url && movie.poster_url.includes('http') ? movie.poster_url : posterUrl;
@@ -30,19 +33,19 @@ const MovieCard = memo(({ movie }) => {
         if (window.innerWidth < 1024) return;
         if (exitTimer.current) clearTimeout(exitTimer.current);
         if (!isHovered) {
-            entryTimer.current = setTimeout(async () => {
+            entryTimer.current = setTimeout(() => {
                 if (cardRef.current) {
                     const rect = cardRef.current.getBoundingClientRect();
                     setCoords({ top: rect.top + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
                     setIsHovered(true);
-                    if (!detailData) {
-                        try {
-                            const res = await getMovieDetail(movie.slug);
-                            if (res.status && res.movie) setDetailData(res.movie);
-                        } catch (err) { console.error(err); }
-                    }
+                    // SỬA 22/11/2026 tối: KHÔNG gọi getMovieDetail khi hover nữa.
+                    // Trước đây mỗi lần rê sang 1 thẻ mới lại gọi 1 API chi tiết,
+                    // vừa tranh băng thông với ảnh, vừa làm popup giật. Popup chỉ
+                    // dùng dữ liệu danh sách đã có (tên, điểm, thể loại, mô tả...),
+                    // diễn viên hiện "Đang cập nhật"; bấm vào phim thì trang chi
+                    // tiết vẫn tải đủ dữ liệu.
                 }
-            }, 500);
+            }, 250);
         }
     };
 
@@ -59,28 +62,28 @@ const MovieCard = memo(({ movie }) => {
         const leftPos = coords.left - (newWidth - coords.width) / 2;
         const rect = cardRef.current ? cardRef.current.getBoundingClientRect() : { top: 0 };
         const topPos = (rect.top + window.scrollY) - 60;
-        const content = stripHtml(detailData?.content || movie.content);
-        const actors = detailData?.actor || [];
-        const categories = detailData?.category || movie.category || [];
-        const time = detailData?.time || movie.time || "N/A";
+        const content = stripHtml(movie.content);
+        const actors = movie.actor || [];
+        const categories = movie.category || [];
+        const time = movie.time || "";
 
         return createPortal(
-            <div className="fixed z-[9999] rounded-xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.95)] animate-fade-in ring-1 ring-white/20 group"
+            <div className="fixed z-[9999] rounded-xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.95)] animate-fade-in ring-1 ring-white/20 group cursor-pointer"
                 style={{ top: topPos - window.scrollY, left: leftPos, width: newWidth, aspectRatio: '4/3', backgroundColor: '#0a0e17' }}
                 onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}
-                onClick={(e) => e.stopPropagation()}
+                onClick={() => navigate(`/phim/${movie.slug}`)}
             >
-                <img src={backdropUrl} alt={movie.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[4s] group-hover:scale-110" />
+                <OptimizedImage src={backdropUrl} width={640} alt={movie.name} className="w-full h-full object-cover transition-transform duration-[4s] group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e17] via-[#0a0e17]/80 to-transparent" />
                 <div className="absolute inset-0 p-4 flex flex-col justify-end items-start gap-2">
-                    <Link to={`/phim/${movie.slug}`} className="block hover:opacity-80 transition w-full">
+                    <Link to={`/phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} className="block hover:opacity-80 transition w-full">
                         <h3 className="text-white font-black text-xl leading-tight line-clamp-2 drop-shadow-lg text-shadow-md font-sans">{movie.name}</h3>
                         <p className="text-gray-400 text-[10px] font-medium line-clamp-1">{movie.origin_name}</p>
                     </Link>
                     <div className="flex items-center flex-wrap gap-2 text-[10px] font-bold text-gray-300 mt-1">
-                        <span className="flex items-center gap-1 text-yellow-400 text-xs font-extrabold shadow-black drop-shadow-md"><FaStar /> {displayRating}</span>
+                        {displayRating && (<span className="flex items-center gap-1 text-yellow-400 text-xs font-extrabold shadow-black drop-shadow-md"><FaStar /> {displayRating}</span>)}
                         <span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{year}</span>
-                        <span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{time.replace('phút', 'p')}</span>
+                        {time && (<span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{time.replace('phút', 'p')}</span>)}
                         <span className="bg-red-600 text-white px-1.5 py-0.5 rounded uppercase shadow-sm">{movie.quality || 'HD'}</span>
                     </div>
                     <p className="text-gray-300 text-[10px] leading-relaxed line-clamp-3 opacity-90 font-medium text-justify">{content || `Phim ${movie.name} chất lượng cao, cập nhật mới nhất tại PhimVietHay.`}</p>
@@ -89,8 +92,8 @@ const MovieCard = memo(({ movie }) => {
                         <div className="text-[10px] text-gray-400 line-clamp-1"><span className="text-white font-bold opacity-70">Thể loại: </span>{categories.map(c => c.name).slice(0, 3).join(' • ')}</div>
                     </div>
                     <div className="flex items-center gap-2 w-full mt-2">
-                        <Link to={`/xem-phim/${movie.slug}`} className="flex-1 bg-red-600 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-700 transition shadow-lg shadow-red-900/30"><FaPlay size={10} /> Xem</Link>
-                        <Link to={`/phim/${movie.slug}`} className="flex-1 bg-white/10 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/20 transition border border-white/20 backdrop-blur-sm"><FaInfoCircle size={12} /> Chi Tiết</Link>
+                        <Link to={`/xem-phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} className="flex-1 bg-red-600 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-700 transition shadow-lg shadow-red-900/30"><FaPlay size={10} /> Xem</Link>
+                        <Link to={`/phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} className="flex-1 bg-white/10 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/20 transition border border-white/20 backdrop-blur-sm"><FaInfoCircle size={12} /> Chi Tiết</Link>
                     </div>
                 </div>
             </div>,
@@ -111,12 +114,12 @@ const MovieCard = memo(({ movie }) => {
                         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-red-600/80 to-red-900/20 opacity-70 blur-md"></div>
                     </div>
 
-                    <img src={posterUrl} alt={movie.name} className="w-full h-full object-cover transform transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-80" loading="lazy" decoding="async" />
+                    <OptimizedImage src={posterUrl} width={320} alt={movie.name} className="w-full h-full object-cover transform transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-80" />
                     
                     {/* Badge/Info (Giữ nguyên) */}
                     <div className="absolute top-2 left-2"><span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase">{movie.quality || 'HD'}</span></div>
-                    <div className="absolute top-2 right-2"><span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">{displayRating} <FaStar size={8} /></span></div>
-                    <div className="absolute bottom-2 right-2 z-10"><span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">{movie.episode_current || 'Full'}</span></div>
+                    {displayRating && (<div className="absolute top-2 right-2"><span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">{displayRating} <FaStar size={8} /></span></div>)}
+                    {movie.episode_current && (<div className="absolute bottom-2 right-2 z-10"><span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">{movie.episode_current}</span></div>)}
                     
                     {/* Play Icon (Nổi bật hơn) */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
