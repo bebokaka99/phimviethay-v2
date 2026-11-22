@@ -9,7 +9,8 @@ import {
 
 import MovieRow from '../components/movies/MovieRow';
 import CommentSection from '../components/comments/CommentSection';
-import VideoPlayer from '../components/movies/VideoPlayer';
+// Player iframe embed (22/11/2026): vsmov chỉ có link_embed, không có link_m3u8
+// nên Artplayer không phát được. VideoPlayer.jsx giữ lại cho hướng resolve m3u8 sau này.
 
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
@@ -209,15 +210,19 @@ const WatchMovie = () => {
                     <div className={`w-full ${isTheater || isLightOff ? 'lg:w-[100%]' : 'lg:w-[75%]'} transition-all duration-500`}>
                         <div className="relative w-full aspect-video bg-black md:rounded-xl overflow-hidden shadow-[0_0_50px_rgba(220,38,38,0.15)] ring-1 ring-white/10 md:ring-red-500/20 group z-20">
                             {currentEpisode ? (
-                                <VideoPlayer
-                                    key={currentEpisode.slug} movieSlug={movie.slug}
-                                    episodes={episodes[currentServer]?.server_data || []} servers={episodes}
-                                    currentEp={currentEpisode} currentServerIndex={currentServer}
-                                    onEpChange={(ep) => handleChangeEpisode(ep)} onServerChange={(index) => setCurrentServer(index)}
-                                    hasNextEp={!!nextEp} onNextEp={() => { if (nextEp) handleChangeEpisode(nextEp); }}
-                                    option={{ id: currentEpisode.slug, url: currentEpisode.link_m3u8, autoplay: true, volume: 1.0, isLive: false, muted: false, poster: bgImage, theme: '#dc2626' }}
-                                    style={{ width: '100%', height: '100%' }}
-                                />
+                                currentEpisode.link_embed ? (
+                                    <iframe
+                                        key={`${currentServer}-${currentEpisode.slug}`}
+                                        src={currentEpisode.link_embed}
+                                        title={`Xem ${movie.name} - Tập ${currentEpisode.name}`}
+                                        className="w-full h-full"
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400 bg-gray-900 px-6 text-center"><p>Tập này chưa có link phát. Thử đổi server khác bên phải.</p></div>
+                                )
                             ) : <div className="flex items-center justify-center h-full text-gray-500 bg-gray-900"><p>Đang tải...</p></div>}
                         </div>
 
@@ -233,6 +238,10 @@ const WatchMovie = () => {
                                 <button onClick={() => navigate(`/phim/${movie.slug}`)} className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 transition-all" title="Chi tiết"><FaArrowLeft /></button>
                             </div>
                         </div>
+
+                        {!isLightOff && currentEpisode?.link_embed && (
+                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này.</p>
+                        )}
 
                         {!isLightOff && (
                             <div className="mt-8 space-y-8 px-4 md:px-0">
