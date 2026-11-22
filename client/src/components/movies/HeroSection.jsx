@@ -73,7 +73,8 @@ const HeroSection = ({ movies }) => {
                                     : `${IMG_URL}${movie.poster_url || movie.thumb_url}`;
                 
                 const posterThumb = `${IMG_URL}${movie.thumb_url}`;
-                const ratingValue = movie.tmdb?.vote_average || movie.vote_average || 0;
+                // Vsmov trả vote_average dạng STRING ("6.9") -> ép Number trước khi .toFixed()
+                const ratingValue = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
                 const displayRating = ratingValue > 0 ? ratingValue.toFixed(1) : 'N/A';
 
                 return (

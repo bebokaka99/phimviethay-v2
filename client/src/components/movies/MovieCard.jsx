@@ -12,7 +12,9 @@ const MovieCard = memo(({ movie }) => {
     const entryTimer = useRef(null);
     const exitTimer = useRef(null);
 
-    const ratingVal = movie.tmdb?.vote_average || movie.vote_average || 0;
+    // Vsmov trả vote_average dạng STRING ("6.9"), Ophim trả number.
+    // Không ép Number thì .toFixed() crash cả trang (lỗi gặp 22/11/2026).
+    const ratingVal = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
     const displayRating = ratingVal > 0 ? ratingVal.toFixed(1) : 'N/A';
     const year = movie.year || movie.category?.[0]?.name || 'Unknown';
     const posterUrl = `${IMG_URL}${movie.thumb_url}`;

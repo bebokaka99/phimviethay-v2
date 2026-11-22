@@ -10,15 +10,17 @@ const Home = () => {
   const [loadingBanner, setLoadingBanner] = useState(true);
   const [bannerMovies, setBannerMovies] = useState([]);
 
+  // Vsmov 22/11/2026: /danh-sach/hoat-hinh và /danh-sach/tv-shows 404,
+  // /the-loai/tinh-cam 0 phim -> remap về endpoint có dữ liệu thật.
   const ROW_CONFIG = [
     { title: "Phim Lẻ Mới Cập Nhật", slug: "phim-le", type: "danh-sach" },
     { title: "Phim Bộ Hot", slug: "phim-bo", type: "danh-sach" },
     { title: "Phim Hành Động", slug: "hanh-dong", type: "the-loai" },
-    { title: "Phim Tình Cảm", slug: "tinh-cam", type: "the-loai" },
+    { title: "Phim Tình Cảm", slug: "lang-man", type: "the-loai" },
     { title: "Phim Hàn Quốc", slug: "han-quoc", type: "quoc-gia" },
     { title: "Phim Trung Quốc", slug: "trung-quoc", type: "quoc-gia" },
-    { title: "Hoạt Hình / Anime", slug: "hoat-hinh", type: "danh-sach" },
-    { title: "TV Shows", slug: "tv-shows", type: "danh-sach" },
+    { title: "Hoạt Hình / Anime", slug: "hoat-hinh", type: "the-loai" },
+    { title: "TV Shows", slug: "phim-bo", type: "danh-sach" },
   ];
 
   useEffect(() => {

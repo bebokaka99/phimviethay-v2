@@ -176,7 +176,7 @@ const WatchMovie = () => {
     const nextEp = getNextEpisode();
     const bgImage = `${IMG_URL}${movie.poster_url || movie.thumb_url}`;
     const pageTitle = `Xem phim ${movie.name} - Tập ${currentEpisode?.name} | PhimVietHay`;
-    const ratingVal = movie.tmdb?.vote_average || movie.vote_average || 0;
+    const ratingVal = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
     const voteCount = movie.tmdb?.vote_count || 0;
     const displayEpisodes = episodes[currentServer] ? episodes[currentServer] : episodes[0];
 

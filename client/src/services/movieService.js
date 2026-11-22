@@ -1,79 +1,104 @@
 import axios from 'axios';
-import axiosInstance from './axiosConfig'; // [MỚI] Dùng instance đã cấu hình chuẩn
+import axiosInstance from './axiosConfig'; // Dùng instance đã cấu hình chuẩn (cho các API backend riêng: auth/favorite/history...)
 
-// --- CẤU HÌNH API OPHIM (Giữ nguyên vì gọi sang domain khác) ---
+// --- CẤU HÌNH API VSMOV (thay Ophim đã chết 22/11/2026) ---
+// Docs: https://vsmov.com/api-document — public, không cần token.
+// Vsmov trả list dạng { status, items, pagination } (top-level),
+// khác Ophim { data: { items, params: { pagination }, titlePage } }.
+// Các trang trong repo đang đọc data.data.items nên cần adapter normalize
+// về đúng shape Ophim cũ để không phải sửa Home/Catalog/SearchPage/LazyMovieRow.
 const client = axios.create({
-    baseURL: 'https://ophim1.com/v1/api',
+    baseURL: 'https://vsmov.com/api',
     headers: { 'Content-Type': 'application/json' }
 });
 
-export let DYNAMIC_CDN = 'https://img.ophim.live/uploads/movies/';
+// Ophim đã bỏ: không còn CDN ảnh riêng, vsmov trả poster/thumb là URL đầy đủ.
 export const IMG_URL = '';
+export let DYNAMIC_CDN = '';
 
 // --- HELPER FUNCTIONS ---
+const PLACEHOLDER = 'https://placehold.co/300x450?text=No+Image';
+
+// Vsmov có vài phim poster_url = {} (object rỗng) -> phải guard typeof string,
+// nếu không .startsWith sẽ crash cả trang.
 const resolveImg = (url) => {
-    if (!url || url === "") return 'https://placehold.co/300x450?text=No+Image';
+    if (!url || typeof url !== 'string' || url === '') return PLACEHOLDER;
     if (url.startsWith('http')) return url;
-    const cleanPath = url.startsWith('/') ? url.slice(1) : url;
-    return `${DYNAMIC_CDN}${cleanPath}`;
+    return url;
 };
 
-const processResponseData = (resData) => {
-    if (resData?.data?.APP_DOMAIN_CDN_IMAGE) {
-        DYNAMIC_CDN = `${resData.data.APP_DOMAIN_CDN_IMAGE}/uploads/movies/`;
-    }
-    if (resData?.data?.items) {
-        resData.data.items = resData.data.items.map(m => ({
-            ...m,
-            poster_url: m.poster_url ? resolveImg(m.poster_url) : resolveImg(m.thumb_url),
-            thumb_url: resolveImg(m.thumb_url)
-        }));
-    }
-    return resData;
+const sanitizeMovie = (m = {}) => ({
+    ...m,
+    poster_url: typeof m.poster_url === 'string' && m.poster_url
+        ? resolveImg(m.poster_url)
+        : resolveImg(m.thumb_url),
+    thumb_url: resolveImg(m.thumb_url),
+});
+
+// Chuẩn hoá response list của vsmov về shape Ophim cũ:
+// { data: { items, titlePage, params: { pagination } } }
+const normalizeList = (resData, titlePage) => {
+    const items = (resData?.items || resData?.data?.items || []).map(sanitizeMovie);
+    const pagination = resData?.pagination || resData?.data?.params?.pagination || null;
+    return {
+        data: {
+            items,
+            titlePage: titlePage || resData?.data?.titlePage || 'Danh sách phim',
+            params: { pagination },
+        },
+    };
 };
 
-// --- CORE SERVICES (LAZY SYNC VỚI BACKEND) ---
+// Vsmov không có /danh-sach/hoat-hinh và /danh-sach/tv-shows (404),
+// /the-loai/tinh-cam trả 0 phim -> remap về endpoint có dữ liệu thật.
+const REMAP = {
+    'danh-sach/hoat-hinh': { type: 'the-loai', slug: 'hoat-hinh' },
+    'danh-sach/tv-shows': { type: 'danh-sach', slug: 'phim-bo' },
+    'the-loai/tinh-cam': { type: 'the-loai', slug: 'lang-man' },
+};
 
-// 1. Lấy chi tiết phim từ Backend mình
+// --- CORE SERVICES ---
+
+// 1. Lấy chi tiết phim — TẠM GỌI TRỰC TIẾP VSMOV (22/11/2026).
+// Trước đây gọi backend mình (/movies/phim/{slug}) để backend sync từ Ophim,
+// nhưng backend đó gọi ophim1.com/phim/{slug} đã 404 nên chi tiết sẽ chết.
+// Khi nào chốt hướng backend mới thì chuyển lại về backend + sync DB.
 export const getMovieDetail = async (slug) => {
     try {
         const cleanSlug = slug.replace(/^player-/, '');
-        
-        // [SỬA] Dùng axiosInstance thay vì MY_API tự tạo
-        // axiosInstance đã tự trả về .data rồi, nên ở đây nhận thẳng kết quả
-        const resData = await axiosInstance.get(`/movies/phim/${cleanSlug}`);
+        const response = await client.get(`/phim/${cleanSlug}`);
+        const resData = response.data;
 
-        if (resData?.data?.APP_DOMAIN_CDN_IMAGE) {
-            DYNAMIC_CDN = `${resData.data.APP_DOMAIN_CDN_IMAGE}/uploads/movies/`;
-        }
-
-        if (resData.status && resData.movie) {
-            const movieObj = resData.movie;
-            const thumb = resolveImg(movieObj.thumb_url);
-            const poster = movieObj.poster_url ? resolveImg(movieObj.poster_url) : thumb;
-
-            movieObj.poster_url = poster;
-            movieObj.thumb_url = thumb;
-            
+        if (resData?.status && resData.movie) {
+            const movieObj = sanitizeMovie(resData.movie);
             if (!movieObj.tmdb) movieObj.tmdb = { vote_average: 0, vote_count: 0 };
 
-            return { status: true, movie: movieObj, episodes: resData.episodes || [] };
+            // Vsmov chỉ trả link_embed, CHƯA có link_m3u8 (player chưa đụng tới).
+            // Dọn server_name dính rác "Vietsub\r\n #1" -> "Vietsub #1".
+            const episodes = (resData.episodes || []).map((sv) => ({
+                server_name: typeof sv.server_name === 'string'
+                    ? sv.server_name.replace(/\s+/g, ' ').trim()
+                    : (sv.server_name || 'Vietsub'),
+                server_data: (sv.server_data || []).map((ep) => ({
+                    ...ep,
+                    link_m3u8: ep.link_m3u8 || null,
+                })),
+            }));
+
+            return { status: true, movie: movieObj, episodes };
         }
         return { status: false, msg: 'Không tìm thấy phim' };
     } catch (error) {
-        console.error("Lỗi lấy chi tiết phim:", error);
+        console.error('Lỗi lấy chi tiết phim:', error);
         return { status: false, msg: 'Lỗi kết nối Server' };
     }
 };
 
-// 2. Lấy Trending từ Backend mình
+// 2. Lấy Trending từ Backend mình (giữ nguyên — backend Render hiện trả []).
 export const getTrendingMovies = async () => {
     try {
-        // [SỬA] Dùng axiosInstance.get trả về mảng luôn
         const data = await axiosInstance.get(`/movies/trending`);
-        
-        // Vì axiosInstance trả về data trực tiếp, nên data chính là mảng phim
-        return data.map(m => ({
+        return (Array.isArray(data) ? data : []).map(m => ({
             ...m,
             thumb_url: resolveImg(m.thumb_url),
             poster_url: resolveImg(m.poster_url),
@@ -84,31 +109,38 @@ export const getTrendingMovies = async () => {
     }
 };
 
-// ... (Các hàm gọi OPhim giữ nguyên vì dùng client riêng)
+// 3. Home banner — vsmov KHÔNG có /home (404) nên lấy phim mới cập nhật thay thế.
 export const getHomeData = async () => {
     try {
-        const response = await client.get('/home');
-        return processResponseData(response.data);
+        const response = await client.get('/danh-sach/phim-moi-cap-nhat', { params: { page: 1 } });
+        return normalizeList(response.data);
     } catch (error) { return null; }
 };
 
 export const getMoviesBySlug = async (slug, page = 1, type = 'danh-sach', filterParams = {}) => {
     try {
-        const url = `/${type}/${slug}`;
+        // Lưu ý: vsmov bỏ qua filter category/country/year/sort_field/limit,
+        // chỉ lọc được 1 thể loại/quốc gia duy nhất qua path. Cứ gửi kèm cho đủ,
+        // lọc nhiều điều kiện sẽ xử lý ở bước sau (hoặc bỏ filter).
+        const remapped = REMAP[`${type}/${slug}`];
+        const finalType = remapped?.type || type;
+        const finalSlug = remapped?.slug || slug;
+        const url = `/${finalType}/${finalSlug}`;
         const response = await client.get(url, { params: { page, ...filterParams } });
-        return processResponseData(response.data);
+        return normalizeList(response.data);
     } catch (error) { return null; }
 };
 
 export const getMenuData = async () => {
     try {
         const [theLoai, quocGia] = await Promise.all([
-            client.get('/the-loai'), 
+            client.get('/the-loai'),
             client.get('/quoc-gia')
         ]);
-        return { 
-            theLoai: theLoai.data.data.items || [], 
-            quocGia: quocGia.data.data.items || [] 
+        // Vsmov: { status: "success", data: { items } } — khớp shape Ophim cũ.
+        return {
+            theLoai: theLoai.data?.data?.items || theLoai.data?.items || [],
+            quocGia: quocGia.data?.data?.items || quocGia.data?.items || []
         };
     } catch (error) { return { theLoai: [], quocGia: [] }; }
 };
@@ -116,10 +148,12 @@ export const getMenuData = async () => {
 export const searchMovies = async (keyword, page = 1) => {
     try {
         const response = await client.get('/tim-kiem', { params: { keyword, page } });
-        return processResponseData(response.data);
+        return normalizeList(response.data);
     } catch (error) { return null; }
 };
 
+// Vsmov không có 2 endpoint này (404) -> catch trả [] như cũ,
+// dàn cast sẽ trống, bù bằng TMDB fallback (vsmov vẫn trả tmdb/imdb id).
 export const getMoviePeoples = async (slug) => {
     try {
         const cleanSlug = slug.replace(/^player-/, '');
