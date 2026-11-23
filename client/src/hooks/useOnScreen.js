@@ -1,25 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function useOnScreen(options) {
-  const ref = useRef(null);
+  const [node, setNode] = useState(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (!node) return;
     const observer = new IntersectionObserver(([entry]) => {
       // Khi thành phần xuất hiện trong màn hình
       if (entry.isIntersecting) {
         setVisible(true);
         // Ngắt theo dõi ngay sau khi đã hiện (chỉ load 1 lần)
-        if (ref.current) observer.unobserve(ref.current);
+        observer.unobserve(node);
       }
     }, options);
 
-    if (ref.current) observer.observe(ref.current);
+    observer.observe(node);
 
-    return () => {
-      if (ref.current) observer.unobserve(ref.current);
-    };
-  }, [ref, options]);
+    return () => observer.disconnect();
+  }, [node, options]);
 
-  return [ref, visible];
+  // Tra ve callback ref thay vi useRef: React goi lai setNode moi khi
+  // phan tu mount/unmount, nen observer luon gan dung luc — quan trong
+  // voi cac trang hien skeleton truoc (MovieDetail/WatchMovie): o lan
+  // render dau ref chua ton tai, ban cu dung useRef + effect chay 1 lan
+  // nen khong bao gio observe duoc phan tu render muon ve sau.
+  // Cach dung khong doi: const [ref, visible] = useOnScreen(opts); <div ref={ref}>.
+  return [setNode, visible];
 }

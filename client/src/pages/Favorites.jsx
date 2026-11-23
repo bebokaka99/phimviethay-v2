@@ -1,42 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FaHeart, FaTrashAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaHeart, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
 import Header from '../components/layout/Header';
 import MovieCard from '../components/movies/MovieCard';
 import { getFavorites, getCurrentUser, toggleFavorite } from '../services/authService';
 
-// --- SUB-COMPONENT: MODAL XÓA ---
-const DeleteModal = ({ isOpen, movieName, onClose, onConfirm }) => {
-    if (!isOpen) return null;
+// --- TOAST THÔNG BÁO — tái dùng đúng mẫu Toast nội bộ có sẵn ở
+// Profile.jsx/Register.jsx (không thư viện ngoài): tự tắt sau 3s.
+const Toast = ({ type, message, onClose }) => {
+    useEffect(() => { const timer = setTimeout(onClose, 3000); return () => clearTimeout(timer); }, [onClose]);
+    const isSuccess = type === 'success';
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[#1a1a1a] border border-white/10 p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center transform scale-100 transition-all">
-                <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FaExclamationTriangle className="text-3xl text-red-500" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Xóa khỏi tủ phim?</h3>
-                <p className="text-gray-400 text-sm mb-6">
-                    Bạn có chắc chắn muốn xóa <span className="text-white font-bold">"{movieName}"</span> khỏi danh sách yêu thích không?
-                </p>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-400 bg-[#222] hover:bg-[#333] transition">
-                        Hủy bỏ
-                    </button>
-                    <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition shadow-lg">
-                        Xóa ngay
-                    </button>
-                </div>
+        <div className={`fixed top-6 right-6 z-[300] flex items-center gap-4 px-6 py-4 rounded-xl border-l-4 backdrop-blur-md animate-fade-in-down transition-all shadow-2xl ${isSuccess ? 'bg-green-900/90 text-white border-green-500 shadow-green-900/30' : 'bg-red-900/90 text-white border-red-600 shadow-red-900/30'}`}>
+            <div className={`p-1 rounded-full ${isSuccess ? 'bg-green-500/20' : 'bg-red-500/20'}`}>{isSuccess ? <FaCheckCircle className="text-xl text-green-400" /> : <FaExclamationCircle className="text-xl text-red-400" />}</div>
+            <div>
+                <h4 className={`font-bold text-sm uppercase tracking-wider ${isSuccess ? 'text-green-400' : 'text-red-400'}`}>{isSuccess ? 'Thành công' : 'Thông báo'}</h4>
+                <p className="text-xs opacity-90 mt-0.5 text-gray-100">{message}</p>
             </div>
+            <button onClick={onClose} className="ml-2 text-white/50 hover:text-white transition"><FaTimes /></button>
         </div>
     );
 };
 
 // --- D1 (23/11/2026): Tủ phim dùng chung MovieCard như trang chủ/Profile —
 // card tự viết FavoriteItem cũ đã gỡ (khác bo góc, không có hover popup,
-// hiện "N/A" khi chưa có điểm). Nút xóa giữ nguyên, phủ lên trên card theo
-// đúng mẫu Profile.jsx (overlay top-left, hiện khi hover).
+// hiện "N/A" khi chưa có điểm).
+// --- Vòng 2 (23/11/2026): nút X gỡ lưu HIỆN RÕ LUÔN trên card (không chờ
+// hover) — nút xóa hover-only cũ thực tế không bấm được: popup hover của
+// MovieCard (portal z-[9999]) mở ngay khi trỏ vào card và che mất nút
+// (z-20), còn trên cảm ứng thì hover không tồn tại nên nút không bao giờ
+// hiện. Nút X mới đặt z-[10000] (cao hơn popup) nên luôn nhìn thấy và bấm
+// được, bấm là gỡ ngay (không modal xác nhận), card biến mất khỏi state
+// local tức thì + toast xác nhận; API lỗi thì card quay lại + toast lỗi.
 
 // --- MAIN COMPONENT ---
 const Favorites = () => {
@@ -45,10 +42,9 @@ const Favorites = () => {
     // Data State
     const [favorites, setFavorites] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+
     // UI State
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [movieToDelete, setMovieToDelete] = useState(null);
+    const [toast, setToast] = useState(null);
 
     // 1. Fetch và Map dữ liệu
     const fetchFavs = async () => {
@@ -80,18 +76,18 @@ const Favorites = () => {
         fetchFavs();
     }, [navigate]);
 
-    // 2. Logic Xóa
-    const requestDelete = (movie) => {
-        setMovieToDelete(movie);
-        setShowDeleteModal(true);
-    };
-
-    const confirmDelete = async () => {
-        if (movieToDelete) {
-            await toggleFavorite({ slug: movieToDelete.slug });
-            fetchFavs();
-            setShowDeleteModal(false);
-            setMovieToDelete(null);
+    // 2. Logic Xóa — gỡ trực tiếp bằng nút X trên card: card biến mất
+    // khỏi state local NGAY (không chờ API, không tải lại trang), toast
+    // xác nhận; API lỗi thì card quay lại đúng vị trí cũ + toast lỗi.
+    const handleRemove = async (movie) => {
+        const prev = favorites;
+        setFavorites(prev.filter((m) => m._id !== movie._id));
+        try {
+            await toggleFavorite({ slug: movie.slug });
+            setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi tủ phim.` });
+        } catch (e) {
+            setFavorites(prev);
+            setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
         }
     };
 
@@ -100,6 +96,7 @@ const Favorites = () => {
             <Helmet>
                 <title>Tủ Phim Của Tôi | PhimVietHay</title>
             </Helmet>
+            {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
             <div className="pt-28 px-4 md:px-12 container mx-auto">
                 {/* Header */}
@@ -122,9 +119,19 @@ const Favorites = () => {
                         {favorites.map((movie) => (
                             <div key={movie._id} className="relative group">
                                 <MovieCard movie={movie} />
-                                <div onClick={(e) => { e.stopPropagation(); requestDelete(movie); }} className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer" title="Xóa khỏi tủ">
-                                    <div className="bg-black/80 text-white hover:text-red-500 p-2 rounded-md backdrop-blur-md border border-white/10 shadow-xl transform hover:scale-110 transition"><FaTrashAlt size={12} /></div>
-                                </div>
+                                {/* Nút X gỡ lưu: HIỆN RÕ LUÔN (không chờ hover), góc
+                                trên-phải poster, z-[10000] cao hơn popup hover
+                                (z-[9999]) nên không bị che; nằm NGOÀI Link của
+                                card nên không xung đột click mở chi tiết. */}
+                                <button
+                                    type="button"
+                                    aria-label={`Gỡ ${movie.name} khỏi tủ phim`}
+                                    title="Gỡ khỏi tủ phim"
+                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleRemove(movie); }}
+                                    className="absolute top-2 right-2 z-[10000] w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-black/50 ring-1 ring-white/30 hover:bg-red-500 hover:scale-110 active:scale-95 transition cursor-pointer"
+                                >
+                                    <FaTimes size={14} />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -139,13 +146,6 @@ const Favorites = () => {
                     </div>
                 )}
             </div>
-
-            <DeleteModal 
-                isOpen={showDeleteModal} 
-                movieName={movieToDelete?.name} 
-                onClose={() => setShowDeleteModal(false)} 
-                onConfirm={confirmDelete} 
-            />
         </div>
     );
 };

@@ -9,9 +9,16 @@ import {
 
 import MovieRow from '../components/movies/MovieRow';
 import CommentSection from '../components/comments/CommentSection';
-import { FaList as FaListIcon } from 'react-icons/fa'; 
+import { FaList as FaListIcon } from 'react-icons/fa';
+import useOnScreen from '../hooks/useOnScreen';
 
-import { getMovieDetail, getMoviesBySlug, getMoviePeoples, getMovieImages, IMG_URL } from '../services/movieService';
+// Lazy load: cac muc duoi chi fetch/render khi sap vao viewport
+// (rootMargin 400px de tai truoc khi user cuon toi).
+const LAZY_OPTS = { rootMargin: '400px' };
+// Danh sach tap chi render theo dot (tranh render 1 lan ca nghin nut).
+const EP_PAGE = 100;
+
+import { getMovieDetail, getMoviesBySlug, getMovieImages, IMG_URL } from '../services/movieService';
 import { checkFavoriteStatus, toggleFavorite, getWatchHistory, getCurrentUser } from '../services/authService';
 import { getTmdbDetails } from '../services/tmdbService';
 
@@ -91,7 +98,6 @@ const MovieDetail = () => {
     const [episodes, setEpisodes] = useState([]);
     const [tmdbData, setTmdbData] = useState(null);
     const [relatedMovies, setRelatedMovies] = useState([]);
-    const [casts, setCasts] = useState([]);
     const [gallery, setGallery] = useState([]);
     
     const [loading, setLoading] = useState(true);
@@ -99,80 +105,97 @@ const MovieDetail = () => {
     const [toastMsg, setToastMsg] = useState('');
     const [isFavorite, setIsFavorite] = useState(false);
     const [continueEp, setContinueEp] = useState(null);
+    // Lazy: so tap dang hien theo tung server (mac dinh 100/server)
+    const [epShown, setEpShown] = useState({});
+    const [gallerySectionRef, galleryVisible] = useOnScreen(LAZY_OPTS);
+    const [commentSectionRef, commentsVisible] = useOnScreen(LAZY_OPTS);
+    const [relatedSectionRef, relatedVisible] = useOnScreen(LAZY_OPTS);
+    const [galleryLoaded, setGalleryLoaded] = useState(false);
+    const [relatedLoaded, setRelatedLoaded] = useState(false);
 
     const castRef = useRef(null);
     const galleryRef = useRef(null);
 
     useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 
-    // --- API CALLS (Giữ nguyên 100%) ---
+    // --- API CALLS ---
+    // Vong 2 (23/11/2026): tach fetch chinh khoi fetch phu.
+    // Truoc day setLoading(false) phai doi Promise.allSettled gom TMDB +
+    // images (404 that ~1,1s) + phim tuong tu + fav/lich su -> noi dung
+    // chinh bi chan 2-3s. Gio: co detail la hien ngay; TMDB/fav/lich su
+    // chay nen; images + phim tuong tu chi fetch khi sap vao viewport.
     useEffect(() => {
         let isMounted = true;
         const fetchDetail = async () => {
             setLoading(true);
             setTmdbData(null);
-            setRelatedMovies([]); 
+            setRelatedMovies([]);
+            setGallery([]);
             setContinueEp(null);
+            setEpShown({});
+            setGalleryLoaded(false);
+            setRelatedLoaded(false);
 
             try {
                 const data = await getMovieDetail(slug);
                 if (!isMounted) return;
-                
+
                 if (data?.status && data?.movie) {
                     setMovie(data.movie);
                     setEpisodes(data.episodes || []);
+                    setLoading(false); // hien noi dung chinh ngay, khong cho phu
 
-                    const { tmdb, imdb, origin_name, year } = data.movie;
-                    const promises = [
-                        getTmdbDetails(tmdb?.id, imdb?.id, origin_name, year),
-                        getMoviePeoples(slug),
-                        getMovieImages(slug),
-                        data.movie.category?.length ? getMoviesBySlug(data.movie.category[0].slug, 1, 'the-loai') : null,
-                    ];
+                    // --- Phu: chay nen, khong chan hien thi ---
+                    // Giai đoạn 2 (6b): getTmdbDetails nhận 1 object movie,
+                    // trước đây gọi sai 4 tham số rời nên luôn trả null.
+                    // getMoviePeoples đã bỏ: endpoint /phim/{slug}/peoples
+                    // không tồn tại (404) nên casts luôn rỗng — diễn viên
+                    // lấy từ movie.actor (có sẵn trong response chi tiết)
+                    // và tmdbData.cast (xem displayCasts bên dưới).
+                    getTmdbDetails(data.movie).then(v => { if (isMounted) setTmdbData(v); });
 
                     const currentUser = getCurrentUser();
                     if (currentUser) {
-                        promises.push(checkFavoriteStatus(data.movie.slug));
-                        promises.push(getWatchHistory());
-                    }
-                    
-                    const settledResults = await Promise.allSettled(promises);
-                    if (!isMounted) return;
-
-                    let nextPromiseIndex = 0;
-                    if (settledResults[nextPromiseIndex]?.status === 'fulfilled') setTmdbData(settledResults[nextPromiseIndex].value);
-                    nextPromiseIndex++;
-                    if (settledResults[nextPromiseIndex]?.status === 'fulfilled') setCasts(settledResults[nextPromiseIndex].value || []);
-                    nextPromiseIndex++;
-                    if (settledResults[nextPromiseIndex]?.status === 'fulfilled') setGallery(settledResults[nextPromiseIndex].value || []);
-                    nextPromiseIndex++;
-                    if (settledResults[nextPromiseIndex]?.status === 'fulfilled' && settledResults[nextPromiseIndex].value?.data?.items) {
-                        const related = settledResults[nextPromiseIndex].value.data.items.filter(m => m.slug !== data.movie.slug).sort(() => 0.5 - Math.random());
-                        setRelatedMovies(related.slice(0, 10));
-                    }
-                    nextPromiseIndex++;
-
-                    if (currentUser) {
-                        if (settledResults[nextPromiseIndex]?.status === 'fulfilled') setIsFavorite(settledResults[nextPromiseIndex].value);
-                        nextPromiseIndex++;
-                        if (settledResults[nextPromiseIndex]?.status === 'fulfilled' && settledResults[nextPromiseIndex].value) {
-                            const histories = settledResults[nextPromiseIndex].value;
+                        checkFavoriteStatus(data.movie.slug).then(v => { if (isMounted) setIsFavorite(v); }).catch(() => {});
+                        getWatchHistory().then(histories => {
+                            if (!isMounted || !histories) return;
                             const historyItem = histories.find(h => h.movie_slug === data.movie.slug);
                             if (historyItem) {
                                 setContinueEp({ slug: historyItem.episode_slug, name: historyItem.episode_name });
                             }
-                        }
+                        }).catch(() => {});
                     }
                 }
-            } catch (error) { 
-                console.error("Error fetching movie detail:", error); 
-            } finally { 
-                if (isMounted) setLoading(false); 
+            } catch (error) {
+                console.error("Error fetching movie detail:", error);
+            } finally {
+                if (isMounted) setLoading(false);
             }
         };
         if (slug) fetchDetail();
         return () => { isMounted = false; };
     }, [slug]);
+
+    // Gallery: chi fetch khi sap cuon toi (endpoint /images 404 that,
+    // truoc day ton ~1,1s trong duong dan hien thi chinh).
+    useEffect(() => {
+        if (!galleryVisible || !movie || galleryLoaded) return;
+        setGalleryLoaded(true);
+        getMovieImages(slug).then(v => setGallery(v || [])).catch(() => {});
+    }, [galleryVisible, movie, galleryLoaded, slug]);
+
+    // Phim tuong tu: chi fetch khi sap cuon toi.
+    useEffect(() => {
+        if (!relatedVisible || !movie || relatedLoaded) return;
+        if (!movie.category?.length) return;
+        setRelatedLoaded(true);
+        getMoviesBySlug(movie.category[0].slug, 1, 'the-loai').then(res => {
+            if (res?.data?.items) {
+                const related = res.data.items.filter(m => m.slug !== movie.slug).sort(() => 0.5 - Math.random());
+                setRelatedMovies(related.slice(0, 10));
+            }
+        }).catch(() => {});
+    }, [relatedVisible, movie, relatedLoaded]);
 
     // Handlers (Giữ nguyên)
     const showToast = (msg) => setToastMsg(msg);
@@ -227,6 +250,13 @@ const MovieDetail = () => {
     const displayVotes = tmdbData?.vote_count ? `(${tmdbData.vote_count} votes)` : (movie.tmdb?.vote_count ? `(${movie.tmdb.vote_count} votes)` : '');
     const movieContentClean = stripHtml(movie.content);
     const pageTitle = `${movie.name} (${movie.year}) - Xem Phim HD`;
+
+    // Giai đoạn 2 (6a): diễn viên hiển thị được ngay cả khi không có ảnh.
+    // Ưu tiên cast TMDB có ảnh (tối đa 12), fallback về movie.actor
+    // (mảng tên trong response chi tiết) với avatar chữ cái.
+    const displayCasts = tmdbData?.cast?.length > 0
+        ? tmdbData.cast.map(c => ({ name: c.name, character: c.character, avatar: c.avatar || null }))
+        : (movie.actor || []).map(name => ({ name, character: '', avatar: null }));
 
     return (
         <div className="bg-[#0a0e17] min-h-screen text-white font-sans overflow-x-hidden relative">
@@ -332,23 +362,23 @@ const MovieDetail = () => {
                 </div>
 
                 {/* CASTS */}
-                {casts && casts.length > 0 && (
+                {displayCasts.length > 0 && (
                     <div className="mt-16 relative">
                         <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><span className="w-1 h-6 bg-red-600 rounded-full"></span> Diễn viên nổi bật</h3>
                         <div className="relative group/list">
                             <button onClick={() => scrollCast(castRef, 'left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover/list:opacity-100 hover:bg-red-600 transition -ml-5 backdrop-blur-sm"><FaChevronLeft /></button>
                             <div ref={castRef} className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x scroll-smooth">
-                                {casts.map((person, idx) => (
+                                {displayCasts.map((person, idx) => (
                                     <div key={idx} className="flex-shrink-0 w-[100px] md:w-[120px] snap-start flex flex-col items-center group/actor">
                                         <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-white/5 group-hover/actor:border-red-500 transition-all duration-300 shadow-lg bg-[#1a1a1a]">
-                                            {person.profile_path ? (
-                                                <img src={getActorImg(person.profile_path)} alt={person.name} className="w-full h-full object-cover" loading="lazy"/>
+                                            {person.avatar ? (
+                                                <img src={person.avatar} alt={person.name} className="w-full h-full object-cover" loading="lazy"/>
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-xl font-bold text-gray-600">{getInitials(person.name)}</div>
                                             )}
                                         </div>
                                         <p className="mt-3 text-sm font-bold text-center text-white line-clamp-1 group-hover/actor:text-red-400 transition">{person.name}</p>
-                                        <p className="text-xs text-gray-400 text-center line-clamp-1">{person.character}</p>
+                                        {person.character && (<p className="text-xs text-gray-400 text-center line-clamp-1">{person.character}</p>)}
                                     </div>
                                 ))}
                             </div>
@@ -364,13 +394,17 @@ const MovieDetail = () => {
                     </h3>
                     
                     {episodes.length > 0 ? (
-                        episodes.map((server, idx) => (
+                        episodes.map((server, idx) => {
+                            const shown = epShown[idx] || EP_PAGE;
+                            const visibleEps = server.server_data.slice(0, shown);
+                            const remaining = server.server_data.length - shown;
+                            return (
                             <div key={idx} className="mb-8 last:mb-0">
                                 <h4 className="text-gray-400 font-bold uppercase text-xs mb-4 flex items-center gap-2 bg-black/20 w-fit px-3 py-1 rounded-full">
                                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> {server.server_name}
                                 </h4>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2.5">
-                                    {server.server_data.map((ep) => (
+                                    {visibleEps.map((ep) => (
                                         <button 
                                             key={ep.slug} 
                                             className="bg-[#1a1a1a] hover:bg-red-600 text-gray-300 hover:text-white py-2 px-2 rounded-lg font-medium text-xs transition-all border border-white/5 hover:border-red-500 shadow-sm truncate active:scale-95" 
@@ -380,8 +414,17 @@ const MovieDetail = () => {
                                         </button>
                                     ))}
                                 </div>
+                                {remaining > 0 && (
+                                    <button
+                                        onClick={() => setEpShown(prev => ({ ...prev, [idx]: shown + EP_PAGE }))}
+                                        className="mt-4 w-full py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-bold text-gray-300 hover:text-white transition"
+                                    >
+                                        Hiển thị thêm ({remaining} tập còn lại)
+                                    </button>
+                                )}
                             </div>
-                        ))
+                            );
+                        })
                     ) : (
                         <div className="text-center py-8 text-gray-500 border-2 border-dashed border-white/10 rounded-xl">
                             <p className="text-sm">Chưa có tập phim nào.</p>
@@ -389,9 +432,10 @@ const MovieDetail = () => {
                     )}
                 </div>
 
-                {/* GALLERY */}
-                {gallery && gallery.length > 0 && (
-                    <div className="mt-16 relative group/gallery">
+                {/* GALLERY — lazy: chi fetch/render khi sap vao viewport */}
+                <div ref={gallerySectionRef} className="mt-16 relative group/gallery">
+                    {galleryVisible && gallery && gallery.length > 0 && (
+                    <>
                          <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><span className="w-1 h-6 bg-blue-500 rounded-full"></span> Hình ảnh</h3>
                          <div ref={galleryRef} className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x">
                             {gallery.map((img, idx) => (
@@ -400,27 +444,34 @@ const MovieDetail = () => {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
+                    </>
+                    )}
+                </div>
 
-                {/* 3. [FIX] COMMENTS: FULL WIDTH + CLEAN LAYOUT */}
-                <div className="mt-16">
+                {/* 3. [FIX] COMMENTS: FULL WIDTH + CLEAN LAYOUT — lazy: chi mount
+                    CommentSection (kem fetch /comments) khi sap vao viewport */}
+                <div ref={commentSectionRef} className="mt-16">
                     <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8">
                         <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
                             <span className="w-1 h-6 bg-purple-500 rounded-full"></span> Bình luận cộng đồng
                         </h3>
                         {/* Comment section chiếm trọn chiều ngang, không còn cột bên phải */}
                         <div className="w-full">
-                            <CommentSection movieSlug={slug} />
+                            {commentsVisible ? (
+                                <CommentSection movieSlug={slug} />
+                            ) : (
+                                <p className="text-sm text-gray-500 py-6 text-center">Đang tải bình luận...</p>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {relatedMovies.length > 0 && (
-                    <div className="mt-16 pt-8 border-t border-white/10">
+                {/* Phim tuong tu — lazy: chi fetch khi sap vao viewport */}
+                <div ref={relatedSectionRef} className="mt-16 pt-8 border-t border-white/10 min-h-[120px]">
+                    {relatedMovies.length > 0 && (
                         <MovieRow title="Có thể bạn muốn xem" movies={relatedMovies} slug={movie.category?.[0]?.slug} type="the-loai" />
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

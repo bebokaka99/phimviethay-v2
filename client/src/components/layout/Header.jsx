@@ -9,23 +9,6 @@ import { LIST_ITEMS, POPULAR_GENRES, POPULAR_COUNTRIES, POPULAR_SEARCHES, HIDDEN
 import Logo from '../common/Logo';
 import UserAvatar from '../common/UserAvatar';
 
-// Bỏ dấu tiếng Việt để tìm trong menu không cần gõ dấu (vd: "han" -> "Hàn Quốc").
-const norm = (s = '') => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\u0110/g, 'D').toLowerCase();
-
-// Chip cloud: gom chip theo chữ cái đầu đã bỏ dấu (vd: "Ả Rập", "Âu Mỹ"
-// -> nhóm A; "Đài Loan" -> nhóm D). Nhóm nào hết mục khi tìm kiếm thì
-// biến mất cùng tiêu đề của nó (do gom từ danh sách đã lọc).
-const groupByFirstLetter = (items) => {
-    const groups = {};
-    items.forEach((item) => {
-        const first = norm(item.name).charAt(0) || '#';
-        const letter = /^[a-z]$/.test(first) ? first.toUpperCase() : '#';
-        if (!groups[letter]) groups[letter] = [];
-        groups[letter].push(item);
-    });
-    return Object.keys(groups).sort().map((letter) => ({ letter, items: groups[letter] }));
-};
-
 const HISTORY_KEY = 'phimviethay_recent_searches';
 
 const Header = () => {
@@ -64,9 +47,6 @@ const Header = () => {
     const userMenuRef = useRef(null);
     const lastScrollYRef = useRef(0);
 
-    // Giai đoạn 3 (H2): tìm trong mega-menu.
-    const [genreQuery, setGenreQuery] = useState('');
-    const [countryQuery, setCountryQuery] = useState('');
     // Giai đoạn 3 (H6): tìm kiếm trong drawer mobile.
     const [drawerSearch, setDrawerSearch] = useState('');
 
@@ -280,9 +260,8 @@ const Header = () => {
     // (đã bỏ slice ở Giai đoạn 2), ẩn slug trùng/rỗng của API.
     const visibleGenres = menuData.theLoai.filter(g => !HIDDEN_GENRE_SLUGS.includes(g.slug));
     const visibleCountries = menuData.quocGia.filter(c => !HIDDEN_COUNTRY_SLUGS.includes(c.slug));
-    // Giai đoạn 3 (H2): lọc trong menu theo ô tìm kiếm (không cần gõ dấu).
-    const filteredGenres = visibleGenres.filter(g => norm(g.name).includes(norm(genreQuery.trim())));
-    const filteredCountries = visibleCountries.filter(c => norm(c.name).includes(norm(countryQuery.trim())));
+    // Vòng sửa 4: gỡ ô tìm kiếm trong dropdown Thể loại/Quốc gia theo yêu
+    // cầu user — danh sách dọc hiển thị đầy đủ, không lọc theo từ khóa nữa.
 
     // Giai đoạn 3 (H1): mục nào đang xem thì sáng + gạch đỏ (cả dropdown
     // theo nhóm route của nó).
@@ -290,7 +269,27 @@ const Header = () => {
     const isTheLoaiActive = location.pathname.startsWith('/the-loai');
     const isQuocGiaActive = location.pathname.startsWith('/quoc-gia');
 
-    const menuPanelClass = (name) => `absolute top-full left-0 bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl transition-all duration-200 ${openMenu === name ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`;
+    // Vòng sửa 3 — PHÁT HIỆN: đo thật bằng getComputedStyle cho thấy panel
+    // menu và panel user TRƯỚC vòng 3 đã dùng ĐÚNG 1 class nền giống hệt
+    // nhau (bg-[#111]/80 + backdrop-blur-xl + border-white/10, đều ra
+    // rgba(17,17,17,0.8) + blur(24px)). Cảm giác panel menu "đặc/tối hơn"
+    // không đến từ màu nền mà đến từ KÍCH THƯỚC + VỊ TRÍ: panel Thể loại/
+    // Quốc gia 320×533px (gấp 2,3 lần diện tích panel user 256×289px),
+    // bo góc nhỏ hơn (rounded-xl 12px so với rounded-2xl 16px của user)
+    // và dính sát trigger (top=50, không có khe hở như pt-2 của user).
+    // Vì vậy chỉ copy class cũ sang thì NHÌN VẪN Y NHƯ CŨ — để đạt mục
+    // tiêu "mờ mờ như dropdown user", hạ CHUNG 1 kiểu nền duy nhất cho
+    // mọi dropdown header (menu ×3, user, tìm kiếm) xuống bg-[#111]/60 +
+    // backdrop-blur-2xl (blur mạnh hơn bù cho nền mờ hơn, vẫn đọc rõ chữ),
+    // bo góc thống nhất rounded-2xl, panel menu thêm mt-2 (khe 8px như
+    // pt-2 của user). Bên trong vẫn chỉ dùng nền trong suốt: dòng thường
+    // trong suốt, hover bg-white/10, đang chọn bg-red-600/15, nút "Xem tất
+    // cả" trong suốt + hover bg-white/10.
+    const dropdownPanelBg = 'bg-[#111]/60 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl';
+    const menuPanelClass = (name) => `absolute top-full left-0 mt-2 ${dropdownPanelBg} transition-all duration-200 ${openMenu === name ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`;
+    // Dòng dọc kiểu truyền thống (dùng chung cho Danh sách / Thể loại /
+    // Quốc gia): thường trong suốt, hover mờ trắng, active đỏ mờ.
+    const dropdownItemClass = (active) => `block px-4 py-2.5 text-sm transition-colors truncate ${active ? 'bg-red-600/15 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/10'}`;
     const triggerClass = (active) => `flex items-center gap-1 ${active ? 'text-white' : 'text-gray-300 hover:text-white'}`;
     const underlineClass = (active) => `absolute left-0 right-0 -bottom-0.5 h-0.5 bg-red-600 rounded-full origin-left transition-transform duration-300 ${active ? 'scale-x-100' : 'scale-x-0'}`;
 
@@ -317,7 +316,7 @@ const Header = () => {
                                     <span className={underlineClass(isDanhSachActive)} />
                                 </button>
                                 <div ref={el => { menuPanelRefs.current['danh-sach'] = el; }} className={`${menuPanelClass('danh-sach')} w-48 overflow-hidden py-2`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
-                                    {LIST_ITEMS.map((item) => (<Link key={item.slug} to={`/danh-sach/${item.slug}`} className="block px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-colors">{item.name}</Link>))}
+                                    {LIST_ITEMS.map((item) => (<Link key={item.slug} to={`/danh-sach/${item.slug}`} className={dropdownItemClass(location.pathname === `/danh-sach/${item.slug}`)}>{item.name}</Link>))}
                                 </div>
                             </li>
                             <li className="relative px-3 py-2 cursor-pointer" onMouseEnter={() => scheduleOpenMenu('the-loai')} onMouseLeave={scheduleCloseMenu} onKeyDown={handleMenuKeyDown}>
@@ -325,44 +324,22 @@ const Header = () => {
                                     Thể loại <FaChevronDown size={8} className={`transition-transform duration-200 ${openMenu === 'the-loai' ? 'rotate-180' : ''}`} />
                                     <span className={underlineClass(isTheLoaiActive)} />
                                 </button>
-                                <div ref={el => { menuPanelRefs.current['the-loai'] = el; }} className={`${menuPanelClass('the-loai')} w-[440px] max-w-[calc(100vw-2rem)] overflow-hidden p-4`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
+                                <div ref={el => { menuPanelRefs.current['the-loai'] = el; }} className={`${menuPanelClass('the-loai')} w-64 max-w-[calc(100vw-2rem)] overflow-hidden py-2`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
                                     {menuError ? (
                                         <div className="py-6 text-center">
                                             <p className="text-sm text-gray-400 mb-3">Không tải được danh sách thể loại.</p>
-                                            <button onClick={loadMenuData} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition">Bấm để thử lại</button>
+                                            <button onClick={loadMenuData} className="px-4 py-2 rounded-lg bg-red-600/70 text-white text-xs font-bold hover:bg-red-600/80 transition">Bấm để thử lại</button>
                                         </div>
                                     ) : menuLoading ? (
                                         <div className="py-6 flex items-center justify-center gap-2 text-sm text-gray-500"><FaSpinner className="animate-spin text-red-500" /> Đang tải...</div>
                                     ) : (
                                         <>
-                                            <input value={genreQuery} onChange={(e) => setGenreQuery(e.target.value)} placeholder="Tìm thể loại..." aria-label="Tìm thể loại" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-red-500/60 transition" />
-                                            <div className="mt-4">
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Phổ biến</span>
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                    {POPULAR_GENRES.map(chip => {
-                                                        const chipActive = location.pathname === `/the-loai/${chip.slug}`;
-                                                        return (<Link key={chip.slug} to={`/the-loai/${chip.slug}`} className={`inline-flex items-center h-10 px-4 rounded-lg border text-[13px] font-bold transition ${chipActive ? 'border-red-600 bg-red-600/15 text-white' : 'bg-white/5 border-white/10 text-gray-200 hover:text-white hover:border-red-600 hover:bg-red-600/10'}`}>{chip.name}</Link>);
-                                                    })}
-                                                </div>
+                                            <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
+                                                {visibleGenres.map((item) => (<Link key={item._id} to={`/the-loai/${item.slug}`} className={dropdownItemClass(location.pathname === `/the-loai/${item.slug}`)}>{item.name}</Link>))}
                                             </div>
-                                            {filteredGenres.length > 0 ? (
-                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar pr-1 mt-4">
-                                                    {groupByFirstLetter(filteredGenres).map((group) => (
-                                                        <div key={group.letter}>
-                                                            <div className="sticky top-0 z-10 bg-[#111]/90 backdrop-blur-md py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
-                                                            <div className="flex flex-wrap gap-2 pb-3">
-                                                                {group.items.map((item) => {
-                                                                    const itemActive = location.pathname === `/the-loai/${item.slug}`;
-                                                                    return (<Link key={item._id} to={`/the-loai/${item.slug}`} className={`inline-flex items-center h-9 px-3.5 rounded-lg border text-sm transition ${itemActive ? 'border-red-600 bg-red-600/15 text-white font-bold' : 'bg-white/5 border-white/10 text-gray-300 hover:text-white hover:border-red-600 hover:bg-red-600/10'}`}>{item.name}</Link>);
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <p className="text-sm text-gray-500 mt-4">Không tìm thấy thể loại nào khớp "{genreQuery}".</p>
-                                            )}
-                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition text-center">Xem tất cả phim →</Link>
+                                            <div className="border-t border-white/10 mt-1 pt-1">
+                                                <Link to="/danh-sach/phim-moi" className="block px-4 py-2.5 text-sm font-bold text-red-500 hover:text-red-400 hover:bg-white/10 transition text-center">Xem tất cả phim →</Link>
+                                            </div>
                                         </>
                                     )}
                                 </div>
@@ -372,44 +349,22 @@ const Header = () => {
                                     Quốc gia <FaChevronDown size={8} className={`transition-transform duration-200 ${openMenu === 'quoc-gia' ? 'rotate-180' : ''}`} />
                                     <span className={underlineClass(isQuocGiaActive)} />
                                 </button>
-                                <div ref={el => { menuPanelRefs.current['quoc-gia'] = el; }} className={`${menuPanelClass('quoc-gia')} w-[440px] max-w-[calc(100vw-2rem)] overflow-hidden p-4`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
+                                <div ref={el => { menuPanelRefs.current['quoc-gia'] = el; }} className={`${menuPanelClass('quoc-gia')} w-64 max-w-[calc(100vw-2rem)] overflow-hidden py-2`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
                                     {menuError ? (
                                         <div className="py-6 text-center">
                                             <p className="text-sm text-gray-400 mb-3">Không tải được danh sách quốc gia.</p>
-                                            <button onClick={loadMenuData} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition">Bấm để thử lại</button>
+                                            <button onClick={loadMenuData} className="px-4 py-2 rounded-lg bg-red-600/70 text-white text-xs font-bold hover:bg-red-600/80 transition">Bấm để thử lại</button>
                                         </div>
                                     ) : menuLoading ? (
                                         <div className="py-6 flex items-center justify-center gap-2 text-sm text-gray-500"><FaSpinner className="animate-spin text-red-500" /> Đang tải...</div>
                                     ) : (
                                         <>
-                                            <input value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder="Tìm quốc gia..." aria-label="Tìm quốc gia" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-red-500/60 transition" />
-                                            <div className="mt-4">
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Phổ biến</span>
-                                                <div className="flex flex-wrap gap-2 mt-2">
-                                                    {POPULAR_COUNTRIES.map(chip => {
-                                                        const chipActive = location.pathname === `/quoc-gia/${chip.slug}`;
-                                                        return (<Link key={chip.slug} to={`/quoc-gia/${chip.slug}`} className={`inline-flex items-center h-10 px-4 rounded-lg border text-[13px] font-bold transition ${chipActive ? 'border-red-600 bg-red-600/15 text-white' : 'bg-white/5 border-white/10 text-gray-200 hover:text-white hover:border-red-600 hover:bg-red-600/10'}`}>{chip.name}</Link>);
-                                                    })}
-                                                </div>
+                                            <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
+                                                {visibleCountries.map((item) => (<Link key={item._id} to={`/quoc-gia/${item.slug}`} className={dropdownItemClass(location.pathname === `/quoc-gia/${item.slug}`)}>{item.name}{item.slug === 'au-my' && (<span className="text-[10px] text-gray-500 ml-1">· Khu vực</span>)}</Link>))}
                                             </div>
-                                            {filteredCountries.length > 0 ? (
-                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar pr-1 mt-4">
-                                                    {groupByFirstLetter(filteredCountries).map((group) => (
-                                                        <div key={group.letter}>
-                                                            <div className="sticky top-0 z-10 bg-[#111]/90 backdrop-blur-md py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
-                                                            <div className="flex flex-wrap gap-2 pb-3">
-                                                                {group.items.map((item) => {
-                                                                    const itemActive = location.pathname === `/quoc-gia/${item.slug}`;
-                                                                    return (<Link key={item._id} to={`/quoc-gia/${item.slug}`} className={`inline-flex items-center h-9 px-3.5 rounded-lg border text-sm transition ${itemActive ? 'border-red-600 bg-red-600/15 text-white font-bold' : 'bg-white/5 border-white/10 text-gray-300 hover:text-white hover:border-red-600 hover:bg-red-600/10'}`}>{item.name}{item.slug === 'au-my' && (<span className="text-[10px] text-gray-600 ml-1">· Khu vực</span>)}</Link>);
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <p className="text-sm text-gray-500 mt-4">Không tìm thấy quốc gia nào khớp "{countryQuery}".</p>
-                                            )}
-                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition text-center">Xem tất cả phim →</Link>
+                                            <div className="border-t border-white/10 mt-1 pt-1">
+                                                <Link to="/danh-sach/phim-moi" className="block px-4 py-2.5 text-sm font-bold text-red-500 hover:text-red-400 hover:bg-white/10 transition text-center">Xem tất cả phim →</Link>
+                                            </div>
                                         </>
                                     )}
                                 </div>
@@ -431,7 +386,7 @@ const Header = () => {
                             {showSearch && (<button onClick={() => { setShowSearch(false); setKeyword(''); setResults([]); }} className="absolute right-3 text-gray-500 hover:text-white transition">{isSearching ? <FaSpinner className="animate-spin text-red-500"/> : <FaTimes/>}</button>)}
                         </div>
                         {showSearch && (
-                            <div className="absolute left-0 top-full mt-3 w-full bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up z-[110]">
+                            <div className={`absolute left-0 top-full mt-3 w-full ${dropdownPanelBg} overflow-hidden animate-fade-in-up z-[110]`}>
                                 {keyword.trim().length === 0 ? (
                                     <div className="p-4">
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tìm kiếm phổ biến</p>
@@ -468,19 +423,19 @@ const Header = () => {
                                     <UserAvatar user={user} className="w-9 h-9 border border-white/10 hover:border-red-500 transition-colors" />
                                 </button>
                                 <div ref={el => { menuPanelRefs.current['user'] = el; }} className={`absolute top-full right-0 pt-2 w-64 z-50 transition-all duration-200 ${openMenu === 'user' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
-                                    <div className="bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                                    <div className={`${dropdownPanelBg} overflow-hidden`}>
                                         <div className="p-3.5 flex gap-2.5 items-center border-b border-white/10">
                                             <UserAvatar user={user} className="w-9 h-9 border border-white/10 shrink-0" />
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-bold text-white truncate flex items-center gap-1.5 flex-wrap">{user.fullname || user.username}<span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0">{getRoleLabel(user.role)}</span></p>
+                                                <p className="text-sm font-bold text-white truncate flex items-center gap-1.5 flex-wrap">{user.fullname || user.username}<span className="bg-red-600/80 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0">{getRoleLabel(user.role)}</span></p>
                                                 <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
                                             </div>
                                         </div>
                                         <div className="p-1.5">
-                                            {(user.role === 'admin' || user.role === 'super_admin') && (<Link to="/admin" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-yellow-500 hover:bg-white/5 hover:text-yellow-400 font-bold rounded-xl"><span className="w-7 h-7 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0"><FaChartBar size={15}/></span>Quản trị</Link>)}
-                                            <Link to="/ho-so" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center shrink-0"><FaUser size={15}/></span>Hồ sơ cá nhân</Link>
-                                            <Link to="/tu-phim" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center shrink-0"><FaHeart size={15}/></span>Tủ phim</Link>
-                                            <Link to="/lich-su" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0"><FaHistory size={15}/></span>Lịch sử xem</Link>
+                                            {(user.role === 'admin' || user.role === 'super_admin') && (<Link to="/admin" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-yellow-500 hover:bg-white/10 hover:text-yellow-400 font-bold rounded-xl"><span className="w-7 h-7 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0"><FaChartBar size={15}/></span>Quản trị</Link>)}
+                                            <Link to="/ho-so" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center shrink-0"><FaUser size={15}/></span>Hồ sơ cá nhân</Link>
+                                            <Link to="/tu-phim" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center shrink-0"><FaHeart size={15}/></span>Tủ phim</Link>
+                                            <Link to="/lich-su" className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded-xl"><span className="w-7 h-7 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0"><FaHistory size={15}/></span>Lịch sử xem</Link>
                                         </div>
                                         <div className="border-t border-white/10 p-1.5"><button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 font-bold rounded-xl"><span className="w-7 h-7 rounded-full bg-red-500/10 flex items-center justify-center shrink-0"><FaSignOutAlt size={15}/></span>Đăng xuất</button></div>
                                     </div>

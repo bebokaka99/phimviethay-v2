@@ -9,7 +9,8 @@ const HeroSection = ({ movies }) => {
     const [heroMovies, setHeroMovies] = useState([]);
     
     // Đồng bộ đồng hồ: các trạng thái tạm dừng tự chuyển
-    const [isHovered, setIsHovered] = useState(false);
+    // (vòng sửa 2, 23/11/2026: BỎ pause-on-hover theo yêu cầu user —
+    // progress + slide luôn chạy kể cả khi chuột hover lên hero)
     const [isTabVisible, setIsTabVisible] = useState(true);
     const [isHeroOnScreen, setIsHeroOnScreen] = useState(true);
     const [isTouchPaused, setIsTouchPaused] = useState(false);
@@ -88,8 +89,9 @@ const HeroSection = ({ movies }) => {
         return () => observer.disconnect();
     }, []);
 
-    // Tổng hợp điều kiện dừng
-    const shouldPause = isHovered || !isTabVisible || !isHeroOnScreen || isTouchPaused || isSwiping;
+    // Tổng hợp điều kiện dừng (GIỮ: tab ẩn, hero ngoài màn hình, sau vuốt;
+    // BỎ: hover — progress + slide luôn chạy khi chuột trên hero)
+    const shouldPause = !isTabVisible || !isHeroOnScreen || isTouchPaused || isSwiping;
 
     // Bộ đếm duy nhất 8 giây chuyển slide — chung đồng hồ với thanh tiến trình.
     useEffect(() => {
@@ -202,8 +204,6 @@ const HeroSection = ({ movies }) => {
         <div 
             ref={heroRef}
             className="relative h-[60vh] md:h-[700px] w-full text-white overflow-hidden group bg-[#0a0e17] touch-pan-y select-none"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}

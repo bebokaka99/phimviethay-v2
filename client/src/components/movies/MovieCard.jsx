@@ -21,15 +21,18 @@ const MovieCard = memo(({ movie }) => {
     // generic "Phim X chất lượng cao..." (tầng hover cũ, đã bỏ).
     const [detailLoading, setDetailLoading] = useState(false);
     const cardRef = useRef(null);
-    const exitTimer = useRef(null);
-    const detailTimer = useRef(null);
+    const popupRef = useRef(null);
+    // Bổ sung 1 vòng 2 (23/11/2026): hover-intent ~2000ms — popup chỉ hiện
+    // khi giữ chuột liên tục trên 1 card đủ 2s; lướt nhanh qua thì không
+    // hiện, không gọi API. Mỗi card tự quản lý timer của mình.
+    const intentTimer = useRef(null);
+    const HOVER_INTENT_MS = 2000;
     const hoveredRef = useRef(false);
     const detailFetchedRef = useRef(false);
 
     // Đóng popup này NGAY LẬP TỨC (dùng khi thẻ khác được trỏ vào).
     const closePopupNow = useCallback(() => {
-        if (exitTimer.current) clearTimeout(exitTimer.current);
-        if (detailTimer.current) clearTimeout(detailTimer.current);
+        if (intentTimer.current) clearTimeout(intentTimer.current);
         hoveredRef.current = false;
         if (activePopupClose === closePopupNow) activePopupClose = null;
         setIsHovered(false);
@@ -37,6 +40,7 @@ const MovieCard = memo(({ movie }) => {
 
     // Dọn registry khi thẻ bị unmount (vd chuyển trang).
     useEffect(() => () => {
+        if (intentTimer.current) clearTimeout(intentTimer.current);
         if (activePopupClose === closePopupNow) activePopupClose = null;
     }, [closePopupNow]);
 
@@ -56,18 +60,51 @@ const MovieCard = memo(({ movie }) => {
         return doc.body.textContent || "";
     };
 
+    // Bổ sung 1 vòng 2: chỉ fetch chi tiết KHI hover-intent đã đủ 2s
+    // (popup sắp hiện) — không fetch ngay khi chuột vừa vào card, để
+    // lướt nhanh qua nhiều thẻ không gọi API vô ích. Chỉ 1 lần mỗi thẻ.
+    const fetchDetail = async () => {
+        if (detailFetchedRef.current || detail) return;
+        if (!hoveredRef.current) { setDetailLoading(false); return; }
+        detailFetchedRef.current = true;
+        try {
+            const data = await getMovieDetail(movie.slug);
+            // Fix A1: rời chuột trước khi fetch về thì bỏ kết quả nhưng
+            // CHO PHÉP fetch lại lần hover sau (trước đây kẹt ở trạng thái
+            // đã-fetch mà detail vẫn null).
+            if (!hoveredRef.current) { detailFetchedRef.current = false; return; }
+            if (data?.status && data?.movie) {
+                setDetail({
+                    content: data.movie.content,
+                    actor: data.movie.actor || [],
+                    category: data.movie.category || [],
+                });
+            } else {
+                detailFetchedRef.current = false;
+            }
+        } catch (e) {
+            detailFetchedRef.current = false;
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    // Bổ sung 1 vòng 2 (hover-intent 2000ms): chuột vào card chỉ bắt đầu
+    // đếm; đủ 2s giữ liên tục mới hiện popup (dữ liệu card có sẵn + skeleton)
+    // rồi mới fetch chi tiết. Rời card trước 2s thì hủy đếm, không hiện gì.
+    // Trỏ sang card khác thì card cũ hủy timer của mình, card mới đếm lại.
     const handleMouseEnter = () => {
         if (window.innerWidth < 1024) return;
-        if (exitTimer.current) clearTimeout(exitTimer.current);
-        if (detailTimer.current) clearTimeout(detailTimer.current);
+        if (intentTimer.current) clearTimeout(intentTimer.current);
         hoveredRef.current = true;
+        // Popup đã mở (vd di chuột từ card sang popup) thì giữ nguyên,
+        // không đếm lại từ đầu.
+        if (isHovered) return;
         // Fix A1: trỏ sang thẻ khác thì đóng NGAY popup thẻ cũ (không chờ
-        // exit 300ms) rồi mới mở popup thẻ này.
+        // exit 300ms) rồi mới đếm để mở popup thẻ này.
         if (activePopupClose && activePopupClose !== closePopupNow) activePopupClose();
-        // Fix A1: popup mới hiện NGAY bằng dữ liệu đã có sẵn trên card
-        // (tên/năm/điểm/poster), không chờ 250ms như trước; phần mô tả/
-        // diễn viên/thể loại hiện skeleton rồi điền khi fetch về.
-        if (!isHovered) {
+        intentTimer.current = setTimeout(() => {
+            if (!hoveredRef.current) return;
             if (cardRef.current) {
                 const rect = cardRef.current.getBoundingClientRect();
                 setCoords({ top: rect.top + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
@@ -75,47 +112,22 @@ const MovieCard = memo(({ movie }) => {
                 activePopupClose = closePopupNow;
             }
             if (!detail && !detailFetchedRef.current) setDetailLoading(true);
-        }
-        // Giai đoạn 2 (5.3): hover ổn định ~400ms và popup đang mở thì gọi
-        // 1 lần duy nhất API chi tiết để lấy mô tả/diễn viên/thể loại thật.
-        // Hủy nếu chuột rời trước khi gọi hoặc trước khi trả về. Rê nhanh
-        // qua nhiều thẻ không gọi (debounce chặn). Lỗi/trống thì popup giữ
-        // dữ liệu danh sách và ẩn các dòng trống (mục 5.2).
-        if (!detailFetchedRef.current && !detail) {
-            detailTimer.current = setTimeout(async () => {
-                if (!hoveredRef.current) { setDetailLoading(false); return; }
-                detailFetchedRef.current = true;
-                try {
-                    const data = await getMovieDetail(movie.slug);
-                    // Fix A1: rời chuột trước khi fetch về thì bỏ kết quả
-                    // nhưng CHO PHÉP fetch lại lần hover sau (trước đây kẹt
-                    // ở trạng thái đã-fetch mà detail vẫn null).
-                    if (!hoveredRef.current) { detailFetchedRef.current = false; return; }
-                    if (data?.status && data?.movie) {
-                        setDetail({
-                            content: data.movie.content,
-                            actor: data.movie.actor || [],
-                            category: data.movie.category || [],
-                        });
-                    } else {
-                        detailFetchedRef.current = false;
-                    }
-                } catch (e) {
-                    detailFetchedRef.current = false;
-                } finally {
-                    setDetailLoading(false);
-                }
-            }, 400);
-        }
+            fetchDetail();
+        }, HOVER_INTENT_MS);
     };
 
-    const handleMouseLeave = () => {
+    // Bổ sung 1 vòng 2: rời chuột khỏi card/popup thì popup ẨN NGAY
+    // (không giữ, không delay khi ẩn). Ngoại lệ duy nhất: di chuột từ
+    // card sang popup (hoặc ngược lại) thì giữ popup để user còn bấm
+    // được nút Xem/Chi Tiết bên trong — popup là portal ngoài card nên
+    // không có ngoại lệ này thì popup sẽ tắt trước khi trỏ vào được.
+    const handleMouseLeave = (e) => {
+        const to = e?.relatedTarget;
+        if (to && (popupRef.current?.contains(to) || cardRef.current?.contains(to))) return;
         hoveredRef.current = false;
-        if (detailTimer.current) clearTimeout(detailTimer.current);
-        exitTimer.current = setTimeout(() => {
-            if (activePopupClose === closePopupNow) activePopupClose = null;
-            setIsHovered(false);
-        }, 300);
+        if (intentTimer.current) clearTimeout(intentTimer.current);
+        if (activePopupClose === closePopupNow) activePopupClose = null;
+        setIsHovered(false);
     };
 
     const MiniHeroPopup = () => {
@@ -139,7 +151,7 @@ const MovieCard = memo(({ movie }) => {
         const time = movie.time || "";
 
         return createPortal(
-            <div className="fixed z-[9999] rounded-xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.95)] animate-popup-in ring-1 ring-white/20 group cursor-pointer"
+            <div ref={popupRef} className="fixed z-[9999] rounded-xl overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.95)] animate-popup-in ring-1 ring-white/20 group cursor-pointer"
                 style={{ top: topPos - window.scrollY, left: leftPos, width: newWidth, aspectRatio: '4/3', backgroundColor: '#0a0e17' }}
                 onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}
                 onClick={() => navigate(`/phim/${movie.slug}`)}

@@ -126,8 +126,13 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 // Thứ tự ưu tiên giống nhau ở cả 3 chỗ nên tag không bao giờ hiện điều
 // kiện bị API bỏ qua. Điều kiện không có endpoint nào nhận (vd: chỉ chọn
 // năm, hoặc category kèm quoc-gia base) bị loại khỏi `eff`.
+// Vòng 2 (23/11/2026): KHÔNG đọc ?type= trên trang the-loai/quoc-gia nữa
+// — không code nào sinh param này, và nó có thể cướp mất điều kiện chính
+// trên path (vd: /the-loai/hanh-dong?type=phim-bo sẽ hiện nhầm Phim Bộ).
+// Điều kiện chính luôn lấy từ path; ?type= chỉ còn ý nghĩa khi group là
+// danh-sach — mà lúc đó nó chính là slug nên cũng không cần đọc.
 const deriveEffective = (group, slug, searchParams) => {
-    const urlType = group === 'danh-sach' ? slug : searchParams.get('type');
+    const urlType = group === 'danh-sach' ? slug : '';
     let urlCat = searchParams.get('category') ? searchParams.get('category').split(',')[0] : '';
     let urlCountry = searchParams.get('country') ? searchParams.get('country').split(',')[0] : '';
     const urlYear = searchParams.get('year') || '';
@@ -167,6 +172,29 @@ const buildFilterParams = (apiType, apiSlug, eff) => {
     return params;
 };
 
+// Vòng 2 (23/11/2026): tiêu đề + tag được TÍNH TRỰC TIẾP lúc render từ
+// cùng deriveEffective với fetch — không qua useEffect/setState nữa.
+// Trước đây có 2 nơi cùng ghi `title` (fetchData ghi titlePage khi
+// title còn rỗng, effect tag ghi tiêu đề theo điều kiện lọc) nên đua nhau:
+// tải mới trang /danh-sach/hoat-hinh hay /quoc-gia/han-quoc?year=2024 thì
+// H1 ra "Danh sách phim" chung chung thay vì "Hoạt hình" / "Hàn Quốc •
+// 2024"; còn sau khi Xóa bộ lọc thì H1 vẫn dính tiêu đề lọc cũ ("Hàn Quốc
+// • 2024") dù tag đã hết và dữ liệu đã là phim-mới. Tính lúc render thì
+// tiêu đề luôn khớp đúng URL đang hiển thị, kể cả khi menu chưa tải xong
+// (tên thể loại/quốc gia hiện sau khi menu về, giống hành vi cũ).
+const deriveTitleAndTags = (eff, menuData) => {
+    const tags = [], titleParts = [];
+    const pushTag = (label) => { if (label) { tags.push({ label }); titleParts.push(label); } };
+    if (eff.type && eff.type !== 'phim-moi') {
+        const name = eff.type === 'tv-shows' ? 'Phim Bộ' : FILTER_DATA.type.find(t => t.value === eff.type)?.name;
+        pushTag(name);
+    }
+    if (eff.category) pushTag(menuData.theLoai.find(i => i.slug === eff.category)?.name);
+    if (eff.country) pushTag(menuData.quocGia.find(i => i.slug === eff.country)?.name);
+    if (eff.year) pushTag(eff.year);
+    return { tags, titleParts };
+};
+
 const Catalog = ({ group }) => {
     const { slug } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -178,9 +206,12 @@ const Catalog = ({ group }) => {
     const [menuData, setMenuData] = useState({ theLoai: [], quocGia: [] });
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [title, setTitle] = useState('');
+    // Vòng 2: apiTitle chỉ là tiêu đề dự phòng khi URL không có điều kiện
+    // lọc nào (vsmov không trả titlePage nên thực tế luôn là "Danh sách
+    // phim"). Tiêu đề hiển thị + tag được tính lúc render (xem
+    // deriveTitleAndTags), không còn state `title`/`activeTags` riêng.
+    const [apiTitle, setApiTitle] = useState('');
     const [showFilter, setShowFilter] = useState(false);
-    const [activeTags, setActiveTags] = useState([]);
     // C1: mỗi chiều chỉ chọn 1 giá trị (API chỉ nhận 1 slug/param), NHƯNG
     // thể loại + quốc gia + năm được kết hợp với nhau (xem FILTER_DATA).
     // Chỉ loại hình phim lẻ/bộ là loại trừ với mọi chiều khác.
@@ -219,7 +250,10 @@ const Catalog = ({ group }) => {
                 const data = await getMoviesBySlug(apiSlug, currentPage, apiType, filterParams);
                 if (data?.data?.items) {
                     setMovies(data.data.items);
-                    if(!title) setTitle(data.data.titlePage || 'Danh sách phim');
+                    // Vòng 2: chỉ ghi lại tiêu đề API làm dự phòng; tiêu đề
+                    // hiển thị do deriveTitleAndTags tính lúc render nên
+                    // không còn chuyện fetch về sau ghi đè tiêu đề lọc.
+                    setApiTitle(data.data.titlePage || 'Danh sách phim');
                     const pagination = data.data.params?.pagination;
                     if (pagination) setTotalPages(Math.ceil(pagination.totalItems / pagination.totalItemsPerPage));
                 } else { setMovies([]); }
@@ -228,23 +262,11 @@ const Catalog = ({ group }) => {
         fetchData();
     }, [slug, currentPage, group, searchParams]);
 
-    useEffect(() => {
-        // C1: tag hiện ĐỦ các điều kiện đang áp dụng thật (có thể 3 tag:
-        // vd "Hành Động • Hàn Quốc • 2024"), cùng deriveEffective với
-        // fetchData nên không còn tag cho điều kiện bị API bỏ qua.
-        const { category, country, type, year } = deriveEffective(group, slug, searchParams);
-        const tags = [], titleParts = [];
-        const pushTag = (label) => { if (label) { tags.push({ label }); titleParts.push(label); } };
-        if (type && type !== 'phim-moi') {
-            const name = type === 'tv-shows' ? 'Phim Bộ' : FILTER_DATA.type.find(t => t.value === type)?.name;
-            pushTag(name);
-        }
-        if (category) pushTag(menuData.theLoai.find(i => i.slug === category)?.name);
-        if (country) pushTag(menuData.quocGia.find(i => i.slug === country)?.name);
-        if (year) pushTag(year);
-        setActiveTags(tags.filter(t => t && t.label));
-        if (titleParts.length > 0) setTitle(titleParts.join(' • ')); else if (!title) setTitle('Danh sách phim');
-    }, [menuData, searchParams, slug, group]);
+    // Vòng 2: tiêu đề + tag tính lúc render từ đúng điều kiện API đang áp
+    // dụng (cùng deriveEffective với fetchData) — luôn khớp URL hiện tại.
+    const effective = deriveEffective(group, slug, searchParams);
+    const { tags: activeTags, titleParts } = deriveTitleAndTags(effective, menuData);
+    const title = titleParts.length > 0 ? titleParts.join(' • ') : (apiTitle || 'Danh sách phim');
 
     // Handlers
     // C1: điều hướng theo điều kiện CHÍNH (path) + điều kiện phụ (query)
@@ -253,6 +275,11 @@ const Catalog = ({ group }) => {
     // (riêng hoat-hinh giữ country/year vì remap về /the-loai/hoat-hinh).
     // Chỉ chọn năm (không có điều kiện chính) thì API không lọc được nên
     // nút Áp dụng đã bị khóa ở hàng Năm — nhánh cuối chỉ là phòng thủ.
+    // Vòng 2 (23/11/2026): Hoạt hình PHẢI xét trước Quốc gia — trước đây
+    // nhánh country đứng trước nên chọn Hoạt hình + Hàn Quốc + 2024 rồi
+    // bấm Áp dụng lại ra /quoc-gia/han-quoc?year=2024, mất hẳn Hoạt hình
+    // (24 phim Hàn 2024 thay vì 3 phim hoạt hình Hàn 2024). Đây là tổ hợp
+    // duy nhất mà thứ tự nhánh làm sai lệch kết quả lọc thật.
     const handleApplyFilter = () => {
         const { category, country, type, year } = selectedFilters;
         let path = '/danh-sach/phim-moi';
@@ -261,15 +288,15 @@ const Catalog = ({ group }) => {
             path = `/the-loai/${category}`;
             if (country) params.set('country', country);
             if (year) params.set('year', year);
+        } else if (type === 'hoat-hinh') {
+            path = '/danh-sach/hoat-hinh';
+            if (country) params.set('country', country);
+            if (year) params.set('year', year);
         } else if (country) {
             path = `/quoc-gia/${country}`;
             if (year) params.set('year', year);
         } else if (type) {
             path = `/danh-sach/${type}`;
-            if (type === 'hoat-hinh') {
-                if (country) params.set('country', country);
-                if (year) params.set('year', year);
-            }
         }
         params.set('page', '1');
         navigate(`${path}?${params.toString()}`); setShowFilter(false);
@@ -280,8 +307,19 @@ const Catalog = ({ group }) => {
     // được chọn cùng lúc; chỉ loại hình phim lẻ/bộ là loại trừ mọi chiều
     // khác (vì /danh-sach/phim-le|phim-bo bỏ qua mọi param phụ). Hoat-hinh
     // là ngoại lệ: giữ được quốc gia + năm nhờ remap về /the-loai/*.
+    // Vòng 2 (23/11/2026): (1) năm KHÔNG được "dính" lại khi điều kiện
+    // chính cuối cùng bị bỏ chọn — trước đây chọn Hàn Quốc + 2024 rồi bấm
+    // "Tất cả" ở hàng Quốc gia thì pill 2024 vẫn đỏ trong khi hàng Năm đã
+    // khóa, bấm Áp dụng thì năm bị lặng lẽ bỏ (ra /danh-sach/phim-moi),
+    // panel hiện một đằng, kết quả một nẻo. (2) chặn chọn năm khi hàng Năm
+    // đang khóa (khóa trước đây chỉ là CSS pointer-events nên vẫn bấm
+    // được bằng bàn phím/gọi trực tiếp).
     const setFilterValue = (key, value) => {
         setSelectedFilters(prev => {
+            if (key === 'year' && value) {
+                const enabled = !!prev.category || !!prev.country || prev.type === 'hoat-hinh';
+                if (!enabled) return prev;
+            }
             const next = { ...prev, [key]: value };
             if (key === 'category' && value) { next.type = ''; }
             if (key === 'country' && value) { if (next.type && next.type !== 'hoat-hinh') next.type = ''; }
@@ -289,6 +327,9 @@ const Catalog = ({ group }) => {
                 if (value === 'hoat-hinh') { next.category = ''; }
                 else { next.category = ''; next.country = ''; next.year = ''; }
             }
+            // Năm chỉ có nghĩa khi còn ít nhất 1 điều kiện chính mà API
+            // cho kết hợp năm (thể loại / quốc gia / Hoạt hình).
+            if (next.year && !next.category && !next.country && next.type !== 'hoat-hinh') next.year = '';
             return next;
         });
     };
@@ -368,11 +409,13 @@ const Catalog = ({ group }) => {
                         <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none transform rotate-12"><FaFilter size={250} /></div>
 
                         <div className="relative z-10 space-y-2">
-                            {/* C1: ghi rõ giới hạn thật của API ngay trong panel để
-                                người dùng không tưởng lọc được cái API không cho
-                                (vd: sắp xếp, lọc nhiều thể loại/quốc gia). */}
+                            {/* C1 + vòng 2: ghi rõ giới hạn thật của API ngay trong
+                                panel để người dùng không tưởng lọc được cái API
+                                không cho (vd: sắp xếp, lọc nhiều thể loại/quốc
+                                gia, năm riêng lẻ). Hoạt hình là ngoại lệ duy
+                                nhất của loại hình: kết hợp được Quốc gia + Năm. */}
                             <p className="text-xs text-gray-500 pb-2">
-                                Lọc được tối đa 1 thể loại + 1 quốc gia + 1 năm cùng lúc. Phim lẻ / Phim bộ không kết hợp thêm điều kiện khác.
+                                Lọc được tối đa 1 thể loại + 1 quốc gia + 1 năm cùng lúc. Phim lẻ / Phim bộ không kết hợp thêm điều kiện khác (riêng Hoạt hình kết hợp được Quốc gia + Năm). Năm chỉ lọc được khi đã chọn Thể loại, Quốc gia hoặc Hoạt hình. Không sắp xếp kết quả, không lọc nhiều giá trị trong cùng 1 nhóm.
                             </p>
                             <FilterRow label="Loại hình" icon={<FaLayerGroup className="text-blue-400 drop-shadow"/>} items={FILTER_DATA.type} activeValue={selectedFilters.type} onSelect={(val) => setFilterValue('type', val)} />
                             <FilterRow label="Quốc gia" icon={<FaGlobe className="text-green-400 drop-shadow"/>} items={visibleCountries} activeValue={selectedFilters.country} onSelect={(val) => setFilterValue('country', val)} gridClass="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5" />

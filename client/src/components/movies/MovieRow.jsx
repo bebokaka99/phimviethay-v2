@@ -8,7 +8,9 @@ import {
 import MovieCard from './MovieCard';
 
 // --- CẤU HÌNH THEME (Map class tĩnh 100% để Tailwind biên dịch chuẩn xác) ---
-const SECTION_THEMES = {
+// Export để WatchMovie.jsx tái dùng đúng 1 theme cho thẻ tiêu đề "Phim tương tự"
+// (vòng 4, 23/11/2026) thay vì hardcode map thứ hai dễ lệch.
+export const SECTION_THEMES = {
     // 1. Phim Lẻ
     'phim-le': {
         gradient: 'from-[#be123c] to-black', 
@@ -287,10 +289,20 @@ const MovieRow = ({ title, movies, slug, type = 'danh-sach' }) => {
                             </div>
                         ))}
                         
-                        {/* Mobile View More */}
-                        <div onClick={handleViewAll} className="md:hidden flex-none w-[100px] aspect-[2/3] rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-95 transition-transform snap-start">
-                            <div className={`w-10 h-10 rounded-full ${theme.accent} bg-white/10 border border-current flex items-center justify-center shadow-lg`}><FaArrowRight /></div>
-                            <span className="text-xs text-gray-400 font-bold uppercase text-center px-2">Xem thêm</span>
+                        {/* Ô "Xem tất cả" ở cuối hàng — nằm trong khung cuộn ngang,
+                            bấm vào đi tới danh sách đầy đủ của hàng (handleViewAll:
+                            /{type}/{slug}, vd /quoc-gia/han-quoc). Hiện mọi cỡ màn hình. */}
+                        <div
+                            onClick={handleViewAll}
+                            role="button"
+                            aria-label={`Xem tất cả ${title}`}
+                            className={`flex-none w-[150px] md:w-[200px] aspect-[2/3] rounded-xl bg-gradient-to-b ${theme.gradient} border ${theme.border} flex flex-col items-center justify-center gap-3 cursor-pointer snap-start group/more transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${theme.hoverShadow}`}
+                        >
+                            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 border border-white/30 flex items-center justify-center text-white shadow-lg transition-transform duration-300 group-hover/more:translate-x-1`}>
+                                <FaArrowRight className="text-xl md:text-2xl" />
+                            </div>
+                            <span className="text-sm md:text-base text-white font-black uppercase tracking-wide text-center px-3">Xem tất cả</span>
+                            <span className="text-[11px] md:text-xs text-gray-300 font-medium text-center px-3 line-clamp-2">{title}</span>
                         </div>
                     </div>
 
