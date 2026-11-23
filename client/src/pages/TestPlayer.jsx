@@ -299,6 +299,16 @@ export default function TestPlayer() {
         width: "100%",
         aspectratio: "16:9",
         autostart: false,
+        // Logo PhimVietHay tren thanh control-bar — y cong thuc vsmov
+        // (theme-vsphim episode.blade.php: logo { file, link, position }).
+        // Chi khac: file = logo cua web minh, link = trang chu,
+        // position = "control-bar" (logo nam duoi thanh trinh chieu,
+        // nhan vao ve trang chu). Khong dung logo vsmov.
+        logo: {
+          file: window.location.origin + "/logo.png",
+          link: window.location.origin + "/",
+          position: "control-bar",
+        },
       });
       player.on("ready", () => {
         stateRef.current.ready = true;
