@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaInfoCircle, FaStar, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaPlay, FaInfoCircle, FaStar } from 'react-icons/fa';
 import { IMG_URL, getMovieDetail } from '../../services/movieService';
 import OptimizedImage from '../common/OptimizedImage';
 
@@ -21,6 +21,17 @@ const HeroSection = ({ movies }) => {
 
     const heroRef = useRef(null);
     const touchPauseTimeout = useRef(null);
+
+    // Giai đoạn 2 (3b): MỘT đồng hồ duy nhất cho cả slide + thanh tiến trình.
+    // remainingRef = số ms còn lại của slide hiện tại; stretchStartRef = lúc
+    // bắt đầu quãng chạy hiện tại. Khi pause: cộng dồn thời gian đã chạy vào
+    // remaining; khi resume: chạy tiếp từ đúng chỗ đã dừng (không chạy lại
+    // từ đầu như setInterval cũ). Đổi slide thì reset về đủ 8s.
+    const SLIDE_MS = 8000;
+    const remainingRef = useRef(SLIDE_MS);
+    const stretchStartRef = useRef(null);
+    const slideTimerRef = useRef(null);
+    const lastSlideIndexRef = useRef(0);
 
     // Tối ưu 22/11/2026: hiện hero NGAY bằng dữ liệu danh sách (đã có sẵn
     // poster/thumb/content), rồi mới gọi 5 API chi tiết ở nền để bổ sung
@@ -80,14 +91,70 @@ const HeroSection = ({ movies }) => {
     // Tổng hợp điều kiện dừng
     const shouldPause = isHovered || !isTabVisible || !isHeroOnScreen || isTouchPaused || isSwiping;
 
-    // Bộ đếm duy nhất 8 giây chuyển slide
+    // Bộ đếm duy nhất 8 giây chuyển slide — chung đồng hồ với thanh tiến trình.
+    useEffect(() => {
+        if (heroMovies.length === 0) return;
+        const slideChanged = lastSlideIndexRef.current !== currentIndex;
+        if (slideChanged) lastSlideIndexRef.current = currentIndex;
+        // Ghi nhận thời gian đã chạy của quãng trước (trừ khi vừa đổi slide)
+        if (!slideChanged && stretchStartRef.current != null) {
+            remainingRef.current = Math.max(0, remainingRef.current - (performance.now() - stretchStartRef.current));
+            stretchStartRef.current = null;
+        }
+        if (slideTimerRef.current) {
+            clearTimeout(slideTimerRef.current);
+            slideTimerRef.current = null;
+        }
+        if (slideChanged) remainingRef.current = SLIDE_MS;
+        if (shouldPause) return;
+        stretchStartRef.current = performance.now();
+        slideTimerRef.current = setTimeout(() => {
+            handleNext();
+        }, remainingRef.current);
+        return () => {
+            if (slideTimerRef.current) {
+                clearTimeout(slideTimerRef.current);
+                slideTimerRef.current = null;
+            }
+        };
+    }, [currentIndex, heroMovies.length, shouldPause, handleNext]);
+
+    // Thanh tiến trình: vẽ bằng rAF từ CÙNG đồng hồ với bộ đếm slide
+    // (không dùng CSS animation riêng nên không bao giờ lệch nhịp với slide).
+    // Cập nhật trực tiếp DOM (không re-render) qua [data-hero-progress].
     useEffect(() => {
         if (heroMovies.length === 0 || shouldPause) return;
-        const interval = setInterval(() => {
-            handleNext();
-        }, 8000);
-        return () => clearInterval(interval);
-    }, [currentIndex, heroMovies.length, shouldPause, handleNext]);
+        // Fix A3 (23/11/2026): thanh tiến trình là chỉ báo thời gian (thông
+        // tin chức năng), KHÔNG phải animation trang trí — luôn chạy kể cả
+        // khi hệ thống bật prefers-reduced-motion. Trước đây dòng matchMedia
+        // dưới này khiến progress đứng yên ở scaleX(0) trong khi slide vẫn
+        // tự chuyển 8s (đã tái hiện đúng bằng giả lập reduced-motion).
+        let raf = 0;
+        const tick = () => {
+            const nodes = heroRef.current?.querySelectorAll('[data-hero-progress]');
+            if (nodes && stretchStartRef.current != null) {
+                const elapsed = SLIDE_MS - remainingRef.current + (performance.now() - stretchStartRef.current);
+                const p = Math.max(0, Math.min(1, elapsed / SLIDE_MS));
+                nodes.forEach((el) => { el.style.transform = `scaleX(${p})`; });
+            }
+            raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [currentIndex, heroMovies.length, shouldPause]);
+
+    // Giai đoạn 2 (3c): preload ảnh slide kế tiếp để fade không diễn ra
+    // trên nền đen (chỉ preload 1 ảnh kế tiếp, không tăng số ảnh tải cùng lúc).
+    useEffect(() => {
+        if (heroMovies.length === 0) return;
+        const next = heroMovies[(currentIndex + 1) % heroMovies.length];
+        if (!next) return;
+        const url = next.poster_url && next.poster_url.includes('http')
+            ? next.poster_url
+            : `${IMG_URL}${next.poster_url || next.thumb_url}`;
+        const img = new Image();
+        img.src = url;
+    }, [currentIndex, heroMovies]);
 
     // Xử lý vuốt trên thiết bị di động
     const handleTouchStart = (e) => {
@@ -141,22 +208,6 @@ const HeroSection = ({ movies }) => {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            {/* Nút Prev / Next ở 2 bên Hero (Desktop) */}
-            <button 
-                onClick={handlePrev}
-                className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-[#0a0e17]/80 border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:border-red-600 transition-all duration-300 shadow-xl"
-                aria-label="Slide trước"
-            >
-                <FaChevronLeft size={16} />
-            </button>
-            <button 
-                onClick={handleNext}
-                className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-[#0a0e17]/80 border border-white/10 text-white items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:border-red-600 transition-all duration-300 shadow-xl"
-                aria-label="Slide tiếp theo"
-            >
-                <FaChevronRight size={16} />
-            </button>
-
             {/* Các slide phim */}
             {heroMovies.map((movie, index) => {
                 const isActive = index === currentIndex;
@@ -172,7 +223,7 @@ const HeroSection = ({ movies }) => {
                 return (
                     <div 
                         key={movie._id || index}
-                        className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                        className={`absolute inset-0 transition-opacity duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[opacity] ${
                             isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
                         }`}
                         style={{
@@ -182,16 +233,19 @@ const HeroSection = ({ movies }) => {
                     >
                         {/* 1. BACKGROUND IMAGE with subtle Ken Burns zoom */}
                         <div className="absolute inset-0 overflow-hidden">
-                            <div className={`w-full h-full transition-transform duration-[8000ms] ease-out ${
-                                isActive ? 'scale-105' : 'scale-100'
+                            {/* Fix A2 (23/11/2026): Ken Burns rõ hơn (zoom tới 1.08)
+                                để chuyển slide có chuyển động nhìn thấy được,
+                                không chỉ đổi opacity. */}
+                            <div className={`w-full h-full transition-transform duration-[8000ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+                                isActive ? 'scale-[1.08]' : 'scale-100'
                             }`}>
                                 <OptimizedImage
                                     src={desktopImg}
                                     width={1440}
                                     alt={movie.name}
                                     className="w-full h-full object-cover object-top"
-                                    eager={index === 0}
-                                    fetchPriority={index === 0 ? 'high' : undefined}
+                                    eager={index === currentIndex || index === (currentIndex + 1) % heroMovies.length}
+                                    fetchPriority={index === currentIndex ? 'high' : undefined}
                                 />
                             </div>
                             {/* Gradient Overlay */}
@@ -203,7 +257,7 @@ const HeroSection = ({ movies }) => {
                             <div className="w-full max-w-[1500px] mx-auto px-4 md:px-16 flex flex-col md:flex-row items-end md:items-center justify-between gap-8 md:gap-12 h-full md:h-auto">
                                 
                                 {/* Cột trái: Thông tin phim */}
-                                <div className={`w-full md:w-[60%] space-y-2 md:space-y-6 z-10 flex flex-col justify-end h-full md:h-auto pb-4 md:pb-0 transition-all duration-700 ease-out delay-100 ${
+                                <div className={`w-full md:w-[60%] space-y-2 md:space-y-6 z-10 flex flex-col justify-end h-full md:h-auto pb-4 md:pb-0 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] delay-100 ${
                                     isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                                 }`}>
                                     
@@ -258,7 +312,7 @@ const HeroSection = ({ movies }) => {
                                 </div>
 
                                 {/* Cột phải: Poster */}
-                                <div className={`hidden md:flex w-full md:w-[40%] justify-end relative z-10 pr-8 transition-all duration-700 ease-out delay-200 ${
+                                <div className={`hidden md:flex w-full md:w-[40%] justify-end relative z-10 pr-8 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] delay-200 ${
                                     isActive ? 'opacity-100 translate-x-0 rotate-3' : 'opacity-0 translate-x-8 rotate-0'
                                 }`}>
                                     <Link 
@@ -274,49 +328,53 @@ const HeroSection = ({ movies }) => {
                 );
             })}
 
-            {/* Thumbnail Navigation (Desktop / Tablet) */}
-            <div className="absolute bottom-6 md:bottom-8 right-6 md:right-12 z-20 hidden md:flex items-center gap-3">
+            {/* Thumbnail Navigation (Desktop / Tablet) — Giai đoạn 2 (3b):
+                thanh tiến trình nằm BÊN DƯỚI mỗi thumbnail (ngoài ảnh, không bị
+                overlay gradient che). Mọi thumbnail đều có vạch nền (track);
+                thumbnail active có vạch đỏ chạy (vẽ bằng rAF, xem useEffect trên). */}
+            <div className="absolute bottom-6 md:bottom-8 right-6 md:right-12 z-20 hidden md:flex items-start gap-3">
                 {heroMovies.map((m, idx) => {
                     let thumbWide = `${IMG_URL}${m.poster_url || m.thumb_url}`;
                     if (m.poster_url && m.poster_url.includes('http')) thumbWide = m.poster_url;
                     const isActive = idx === currentIndex;
                     return (
-                        <div
+                        <button
                             key={m._id || idx}
                             onClick={() => setCurrentIndex(idx)}
-                            className={`group/thumb relative w-24 lg:w-28 h-14 lg:h-16 rounded-xl overflow-hidden cursor-pointer transition-all duration-500 ease-out ${
-                                isActive 
-                                    ? 'scale-110 -translate-y-1.5 shadow-2xl shadow-red-950/70 ring-2 ring-red-500/80 z-10 opacity-100' 
-                                    : 'opacity-50 hover:opacity-90 hover:scale-105 hover:-translate-y-0.5 border border-white/10'
-                            }`}
+                            aria-label={`Xem ${m.name}`}
+                            className="group/thumb flex flex-col gap-1.5 w-24 lg:w-28 cursor-pointer bg-transparent p-0 text-left"
                         >
-                            <OptimizedImage 
-                                src={thumbWide} 
-                                width={224} 
-                                alt={m.name} 
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" 
-                            />
-                            
-                            {/* Overlay */}
-                            <div className={`absolute inset-0 transition-opacity duration-300 ${
-                                isActive ? 'bg-gradient-to-t from-black/80 via-transparent to-transparent' : 'bg-black/40 group-hover/thumb:bg-transparent'
-                            }`} />
+                            <div
+                                className={`relative w-full h-14 lg:h-16 rounded-xl overflow-hidden transition-all duration-500 ease-out ${
+                                    isActive 
+                                        ? 'scale-110 -translate-y-1.5 shadow-2xl shadow-red-950/70 ring-2 ring-red-500/80 z-10 opacity-100' 
+                                        : 'opacity-50 hover:opacity-90 hover:scale-105 hover:-translate-y-0.5 border border-white/10'
+                                }`}
+                            >
+                                <OptimizedImage 
+                                    src={thumbWide} 
+                                    width={224} 
+                                    alt={m.name} 
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-110" 
+                                />
+                                
+                                {/* Overlay */}
+                                <div className={`absolute inset-0 transition-opacity duration-300 ${
+                                    isActive ? 'bg-gradient-to-t from-black/80 via-transparent to-transparent' : 'bg-black/40 group-hover/thumb:bg-transparent'
+                                }`} />
+                            </div>
 
-                            {/* Dòng đỏ chạy bên dưới card mượt mà */}
-                            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20 z-20 overflow-hidden">
+                            {/* Thanh tiến trình dưới thumbnail */}
+                            <div className="h-[3px] w-full bg-white/20 rounded-full overflow-hidden">
                                 {isActive && (
                                     <div 
-                                        key={currentIndex}
-                                        className="h-full bg-gradient-to-r from-red-600 via-red-500 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.9)] origin-left"
-                                        style={{ 
-                                            width: '100%',
-                                            animation: 'heroProgress 8s linear forwards',
-                                            animationPlayState: shouldPause ? 'paused' : 'running' 
-                                        }} 
+                                        data-hero-progress
+                                        className="h-full w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.9)] origin-left"
+                                        style={{ transform: 'scaleX(0)' }}
                                     />
                                 )}
                             </div>
-                        </div>
+                        </button>
                     );
                 })}
             </div>
@@ -336,26 +394,15 @@ const HeroSection = ({ movies }) => {
                         >
                             {isActive && (
                                 <div
-                                    key={currentIndex}
-                                    className="h-full bg-red-600 rounded-full origin-left"
-                                    style={{
-                                        width: '100%',
-                                        animation: 'heroProgress 8s linear forwards',
-                                        animationPlayState: shouldPause ? 'paused' : 'running'
-                                    }}
+                                    data-hero-progress
+                                    className="h-full w-full bg-red-600 rounded-full origin-left"
+                                    style={{ transform: 'scaleX(0)' }}
                                 />
                             )}
                         </button>
                     );
                 })}
             </div>
-
-            <style>{`
-                @keyframes heroProgress {
-                    0% { transform: scaleX(0); }
-                    100% { transform: scaleX(1); }
-                }
-            `}</style>
         </div>
     );
 };

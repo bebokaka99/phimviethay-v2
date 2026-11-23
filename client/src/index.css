@@ -77,6 +77,27 @@ body {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+/* Fix A2 (23/11/2026): popup hover vào phim mở ra mượt — mờ dần + nở nhẹ
+   từ 0.96 + trồi lên 8px, thay cho fade thuần trước đây. Trên desktop,
+   popup phủ lên card nên đây chính là animation hover mà mắt thấy được
+   (card bên dưới mất :hover khi popup che lên nên scale của card không
+   nhìn thấy); card vẫn giữ hover scale/glow cho màn <1024px (không popup). */
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-popup-in {
+  animation: popupIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 @keyframes fadeInUpCustom {
   from {
     opacity: 0;
@@ -161,16 +182,14 @@ body {
   animation: rowCardEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* --- 3. TÔN TRỌNG prefers-reduced-motion (UI 22/11/2026) --- */
-/* Người dùng bật "giảm chuyển động" thì tắt hết animation/transition để
-   không gây khó chịu (hero tự chuyển, fade, scale, shimmer...). */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* --- 3. prefers-reduced-motion (GỠ kill-switch 23/11/2026 — Fix A2/A3) --- */
+/* Kill-switch cũ `@media (prefers-reduced-motion: reduce) { * {
+ * transition-duration: 0.01ms !important; ... } }` ép MỌI transition/
+ * animation về 0.01ms nên khi hệ điều hành bật "giảm chuyển động"
+ * (Windows: Cài đặt > Trợ năng > Hiệu ứng hình ảnh), hero cắt slide đột
+ * ngột không crossfade, thanh tiến trình đứng yên (HeroSection cũng return
+ * sớm theo matchMedia), hover card mất animation — trong khi slide vẫn tự
+ * chuyển 8s. Đã tái hiện đúng cả 3 triệu chứng này bằng giả lập
+ * reduced-motion trên Chrome headless. Theo yêu cầu user, animation hero/
+ * card + thanh tiến trình trên trang chủ LUÔN chạy (đó là điểm khác biệt
+ * của web). Ai cần giảm chuyển động thì bật lại block media query dưới. */

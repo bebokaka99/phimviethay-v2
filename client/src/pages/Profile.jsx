@@ -2,9 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FaUserCircle, FaSave, FaSignOutAlt, FaCamera, FaLock, FaIdCard, FaHeart, FaTrashAlt, FaExclamationTriangle, FaCloudUploadAlt, FaCheckCircle, FaImage, FaPen, FaTimes } from 'react-icons/fa';
+import { FaUserCircle, FaSave, FaSignOutAlt, FaCamera, FaLock, FaIdCard, FaHeart, FaTrashAlt, FaExclamationTriangle, FaCloudUploadAlt, FaCheckCircle, FaExclamationCircle, FaImage, FaPen, FaTimes } from 'react-icons/fa';
 
-import Header from '../components/layout/Header';
 import MovieCard from '../components/movies/MovieCard';
 import UserAvatar from '../components/common/UserAvatar';
 import { getFavorites, getCurrentUser, updateProfile, logout, toggleFavorite } from '../services/authService';
@@ -41,6 +40,24 @@ const DeleteConfirmationModal = ({ isOpen, movieName, onClose, onConfirm }) => {
     );
 };
 
+// Component Toast thông báo — tái dùng đúng mẫu Toast có sẵn ở Register.jsx
+// (không có thư viện toast ngoài nào trong package.json; Toast là component
+// tự viết, dùng chung cho cả lưu phim ở MovieDetail/WatchMovie).
+const Toast = ({ type, message, onClose }) => {
+    useEffect(() => { const timer = setTimeout(onClose, 3000); return () => clearTimeout(timer); }, [onClose]);
+    const isSuccess = type === 'success';
+    return (
+        <div className={`fixed top-6 right-6 z-[300] flex items-center gap-4 px-6 py-4 rounded-xl border-l-4 backdrop-blur-md animate-fade-in-down transition-all shadow-2xl ${isSuccess ? 'bg-green-900/90 text-white border-green-500 shadow-green-900/30' : 'bg-red-900/90 text-white border-red-600 shadow-red-900/30'}`}>
+            <div className={`p-1 rounded-full ${isSuccess ? 'bg-green-500/20' : 'bg-red-500/20'}`}>{isSuccess ? <FaCheckCircle className="text-xl text-green-400" /> : <FaExclamationCircle className="text-xl text-red-400" />}</div>
+            <div>
+                <h4 className={`font-bold text-sm uppercase tracking-wider ${isSuccess ? 'text-green-400' : 'text-red-400'}`}>{isSuccess ? 'Thành công' : 'Thông báo'}</h4>
+                <p className="text-xs opacity-90 mt-0.5 text-gray-100">{message}</p>
+            </div>
+            <button onClick={onClose} className="ml-2 text-white/50 hover:text-white transition"><FaTimes /></button>
+        </div>
+    );
+};
+
 const Profile = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(getCurrentUser());
@@ -53,6 +70,7 @@ const Profile = () => {
     const [movieToDelete, setMovieToDelete] = useState(null);
     const [formData, setFormData] = useState({ fullname: '', avatar: '', newPassword: '', confirmPassword: '' });
     const [selectedFile, setSelectedFile] = useState(null);
+    const [toast, setToast] = useState(null);
     const fileInputRef = useRef(null);
 
     const fetchFavs = async () => {
@@ -84,7 +102,7 @@ const Profile = () => {
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) { alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB."); return; }
+            if (file.size > 5 * 1024 * 1024) { setToast({ type: 'error', message: 'Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.' }); return; }
             const previewUrl = URL.createObjectURL(file);
             setFormData(prev => ({ ...prev, avatar: previewUrl }));
             setSelectedFile(file);
@@ -102,16 +120,16 @@ const Profile = () => {
 
     const handleUpdate = async (e) => {
         e.preventDefault();
-        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { alert('Mật khẩu nhập lại không khớp!'); return; }
+        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { setToast({ type: 'error', message: 'Mật khẩu nhập lại không khớp!' }); return; }
         setIsSaving(true);
         try {
             let finalAvatarUrl = formData.avatar;
             if (selectedFile) finalAvatarUrl = await uploadImageToCloudinary(selectedFile);
             const dataToSend = { fullname: formData.fullname, avatar: finalAvatarUrl, ...(formData.newPassword && { password: formData.newPassword }) };
             const res = await updateProfile(dataToSend);
-            setUser(res.user); setShowEdit(false); setSelectedFile(null); alert('Cập nhật hồ sơ thành công!');
+            setUser(res.user); setShowEdit(false); setSelectedFile(null); setToast({ type: 'success', message: 'Cập nhật hồ sơ thành công!' });
         } catch (error) {
-            alert(error.message || "Có lỗi xảy ra khi cập nhật hồ sơ");
+            setToast({ type: 'error', message: error.message || "Có lỗi xảy ra khi cập nhật hồ sơ" });
         } finally { setIsSaving(false); }
     };
 
@@ -120,7 +138,7 @@ const Profile = () => {
     return (
         <div className="min-h-screen bg-transparent text-white font-sans pb-20 selection:bg-red-600 selection:text-white">
             <Helmet><title>Hồ sơ của tôi | PhimVietHay</title></Helmet>
-            <Header />
+            {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
             <div className="relative h-[350px] md:h-[400px] group overflow-hidden mt-[-64px] md:mt-[-80px]">
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e17] via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 w-full container mx-auto px-4 md:px-12 pb-4 flex flex-col md:flex-row items-center md:items-end gap-6 z-10">

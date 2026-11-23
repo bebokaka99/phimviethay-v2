@@ -2,21 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { 
-    FaFilter, FaCheck, FaTags, FaTrashAlt, FaSortAmountDown, 
-    FaLayerGroup, FaGlobe, FaCalendarAlt, FaFilm, 
+    FaFilter, FaCheck, FaTags, FaTrashAlt, 
+    FaLayerGroup, FaGlobe, FaFilm, FaCalendarAlt,
     FaChevronLeft, FaChevronRight, FaFire, FaHeart, FaGhost, 
     FaLaughSquint, FaSearch, FaBolt, FaStar, FaTv
 } from 'react-icons/fa';
 import MovieGrid from '../components/movies/MovieGrid';
 import { MovieGridSkeleton } from '../components/common/Skeleton';
 import { getMoviesBySlug, getMenuData } from '../services/movieService';
+import { HIDDEN_GENRE_SLUGS, HIDDEN_COUNTRY_SLUGS } from '../config/menuRows';
 
 // --- CONSTANTS ---
+// C1 (23/11/2026) — khả năng lọc THẬT của vsmov, kiểm chứng bằng curl:
+// - 1 điều kiện chính qua path: /the-loai/<1 slug> | /quoc-gia/<1 slug>
+//   | /danh-sach/<1 slug>. Nhiều slug (dấu phẩy) hoặc nhiều giá trị 1
+//   param đều trả 0 phim.
+// - /the-loai/<slug> NHẬN THÊM: ?country=<1 slug> (4178 -> 223 phim) và
+//   ?year=<yyyy> (4178 -> 296, toàn 2024). Cả 3 cùng lúc: 4178 -> 16 phim.
+// - /quoc-gia/<slug> NHẬN THÊM: ?year=<yyyy> (1217 -> 92, toàn 2024).
+//   Param category/genre/the-loai trên endpoint này bị bỏ qua.
+// - /danh-sach/<slug> (phim-le/phim-bo/phim-moi/...): country/year/
+//   category/sort_* đều bị bỏ qua. Loại phim lẻ/bộ chính là path.
+// - /the-loai/hoat-hinh (đích remap của /danh-sach/hoat-hinh) nhận thêm
+//   country+year như mọi /the-loai/* khác (342 / 15 phim).
+// - sort_field/sort_type bị bỏ qua ở mọi endpoint -> KHÔNG có sắp xếp.
+// - Vì vậy: mỗi chiều chỉ chọn 1 (single-select), nhưng thể loại +
+//   quốc gia + năm ĐƯỢC kết hợp; phim lẻ/bộ thì không kết hợp thêm gì.
 const FILTER_DATA = {
-    sort: [ { name: 'Mới cập nhật', value: 'modified.time' }, { name: 'Năm sản xuất', value: 'year' }, { name: 'Lượt xem', value: 'view' } ],
-    type: [ { name: 'Phim lẻ', value: 'phim-le' }, { name: 'Phim bộ', value: 'phim-bo' }, { name: 'Hoạt hình', value: 'hoat-hinh' }, { name: 'TV Shows', value: 'tv-shows' } ]
+    type: [ { name: 'Phim lẻ', value: 'phim-le' }, { name: 'Phim bộ', value: 'phim-bo' }, { name: 'Hoạt hình', value: 'hoat-hinh' } ],
+    // Năm: 2026 (năm hiện tại theo dữ liệu API) lùi về 2010, mỗi năm 1 pill.
+    years: Array.from({ length: 17 }, (_, i) => 2026 - i).map(y => ({ name: String(y), value: String(y) })),
 };
-const YEARS = Array.from({ length: 16 }, (_, i) => ({ name: (2025 - i).toString(), value: (2025 - i).toString() }));
 
 // Helper Icon Header
 const getHeaderIcon = (title) => {
@@ -44,8 +60,9 @@ const FilterPill = ({ label, active, onClick }) => (
     </button>
 );
 
-// Filter Row
-const FilterRow = ({ label, icon, items, activeValue, onSelect, isMulti = false, gridClass = "flex flex-wrap gap-1" }) => (
+// Filter Row — disabled: hàng bị vô hiệu (vd: Năm khi chưa chọn điều kiện
+// chính nào mà API cho phép kết hợp năm) thì mờ + không bấm được, kèm hint.
+const FilterRow = ({ label, icon, items, activeValue, onSelect, isMulti = false, gridClass = "flex flex-wrap gap-1", disabled = false, hint = '' }) => (
     <div className="flex flex-col md:flex-row gap-3 md:gap-6 border-b border-white/5 py-5 last:border-0 hover:bg-white/[0.02] transition-colors rounded-xl px-2 -mx-2">
         <div className="w-36 flex-shrink-0 pt-1 md:text-right flex items-center md:justify-end gap-3 group">
             <span className="text-gray-200 font-bold text-xs uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>
@@ -53,13 +70,18 @@ const FilterRow = ({ label, icon, items, activeValue, onSelect, isMulti = false,
                 {icon}
             </div>
         </div>
-        <div className={`flex-1 ${gridClass}`}>
-            <FilterPill label="Tất cả" active={isMulti ? (!activeValue || activeValue.length === 0) : activeValue === ''} onClick={() => onSelect('')} />
-            {items?.map((item) => {
-                const val = item.slug !== undefined ? item.slug : item.value;
-                const isActive = isMulti ? activeValue?.includes(val) : activeValue === val;
-                return <FilterPill key={val} label={item.name} active={isActive} onClick={() => onSelect(val)} />;
-            })}
+        <div className="flex-1 min-w-0">
+            <div className={`${gridClass} ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
+                <FilterPill label="Tất cả" active={isMulti ? (!activeValue || activeValue.length === 0) : activeValue === ''} onClick={() => onSelect('')} />
+                {items?.map((item) => {
+                    const val = item.slug !== undefined ? item.slug : item.value;
+                    const isActive = isMulti ? activeValue?.includes(val) : activeValue === val;
+                    return <FilterPill key={val} label={item.name} active={isActive} onClick={() => onSelect(val)} />;
+                })}
+            </div>
+            {disabled && hint && (
+                <p className="text-xs text-gray-500 italic mt-2">{hint}</p>
+            )}
         </div>
     </div>
 );
@@ -99,6 +121,52 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     );
 };
 
+// C1: suy ra ĐÚNG điều kiện API sẽ áp dụng từ URL (group + slug + query),
+// dùng chung cho: đồng bộ state bộ lọc, fetch dữ liệu và tag/tiêu đề.
+// Thứ tự ưu tiên giống nhau ở cả 3 chỗ nên tag không bao giờ hiện điều
+// kiện bị API bỏ qua. Điều kiện không có endpoint nào nhận (vd: chỉ chọn
+// năm, hoặc category kèm quoc-gia base) bị loại khỏi `eff`.
+const deriveEffective = (group, slug, searchParams) => {
+    const urlType = group === 'danh-sach' ? slug : searchParams.get('type');
+    let urlCat = searchParams.get('category') ? searchParams.get('category').split(',')[0] : '';
+    let urlCountry = searchParams.get('country') ? searchParams.get('country').split(',')[0] : '';
+    const urlYear = searchParams.get('year') || '';
+    if (group === 'the-loai') urlCat = slug;
+    if (group === 'quoc-gia') urlCountry = slug;
+
+    let apiSlug = 'phim-moi', apiType = 'danh-sach';
+    const eff = { category: '', country: '', type: '', year: '' };
+    if (urlType && urlType !== 'phim-moi') {
+        apiSlug = urlType; apiType = 'danh-sach'; eff.type = urlType;
+        // Chỉ hoat-hinh (remap -> /the-loai/hoat-hinh) nhận thêm country+year.
+        if (urlType === 'hoat-hinh') { eff.country = urlCountry; eff.year = urlYear; }
+    } else if (urlCat) {
+        apiSlug = urlCat; apiType = 'the-loai';
+        eff.category = urlCat; eff.country = urlCountry; eff.year = urlYear;
+    } else if (urlCountry) {
+        apiSlug = urlCountry; apiType = 'quoc-gia';
+        eff.country = urlCountry; eff.year = urlYear;
+    }
+    return { apiSlug, apiType, ...eff };
+};
+
+// Param phụ (?country=, ?year=) chỉ gửi khi endpoint đích thật sự nhận
+// (xem bảng ở FILTER_DATA). Gửi kèm lên /danh-sach/* cũng vô hại nhưng
+// dễ gây hiểu lầm là API có lọc nên KHÔNG gửi.
+const buildFilterParams = (apiType, apiSlug, eff) => {
+    const params = {};
+    if (apiType === 'the-loai') {
+        if (eff.country) params.country = eff.country;
+        if (eff.year) params.year = eff.year;
+    } else if (apiType === 'quoc-gia') {
+        if (eff.year) params.year = eff.year;
+    } else if (apiType === 'danh-sach' && apiSlug === 'hoat-hinh') {
+        if (eff.country) params.country = eff.country;
+        if (eff.year) params.year = eff.year;
+    }
+    return params;
+};
+
 const Catalog = ({ group }) => {
     const { slug } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -113,28 +181,27 @@ const Catalog = ({ group }) => {
     const [title, setTitle] = useState('');
     const [showFilter, setShowFilter] = useState(false);
     const [activeTags, setActiveTags] = useState([]);
-    const [selectedFilters, setSelectedFilters] = useState({ category: [], country: [], year: '', type: '', sort: 'modified.time' });
+    // C1: mỗi chiều chỉ chọn 1 giá trị (API chỉ nhận 1 slug/param), NHƯNG
+    // thể loại + quốc gia + năm được kết hợp với nhau (xem FILTER_DATA).
+    // Chỉ loại hình phim lẻ/bộ là loại trừ với mọi chiều khác.
+    const [selectedFilters, setSelectedFilters] = useState({ category: '', country: '', type: '', year: '' });
+
+    // Năm chỉ có tác dụng khi đi kèm thể loại, quốc gia hoặc Hoạt hình
+    // (API không lọc được theo năm riêng lẻ) -> hàng Năm bị khóa khi
+    // chưa có điều kiện chính nào trong 3 loại đó.
+    const yearEnabled = !!selectedFilters.category || !!selectedFilters.country || selectedFilters.type === 'hoat-hinh';
+
+    // Giai đoạn 3 (L6): bộ lọc cũng ẩn slug trùng/rỗng như menu header.
+    const visibleGenres = menuData.theLoai.filter(g => !HIDDEN_GENRE_SLUGS.includes(g.slug));
+    const visibleCountries = menuData.quocGia.filter(c => !HIDDEN_COUNTRY_SLUGS.includes(c.slug));
 
     useEffect(() => { getMenuData().then(data => data && setMenuData(data)); }, []);
 
     useEffect(() => {
-        const parseArray = (str) => str ? str.split(',') : [];
-        const newFilters = { category: [], country: [], type: '', year: '', sort: 'modified.time' };
-        if (group === 'the-loai') newFilters.category = [slug];
-        else if (group === 'quoc-gia') newFilters.country = [slug];
-        else if (group === 'danh-sach') newFilters.type = slug;
-
-        const qCat = searchParams.get('category');
-        const qCountry = searchParams.get('country');
-        if (qCat) newFilters.category = [...newFilters.category, ...parseArray(qCat)];
-        if (qCountry) newFilters.country = [...newFilters.country, ...parseArray(qCountry)];
-        
-        newFilters.category = [...new Set(newFilters.category)];
-        newFilters.country = [...new Set(newFilters.country)];
-        if (searchParams.get('sort_field')) newFilters.sort = searchParams.get('sort_field');
-        if (searchParams.get('year')) newFilters.year = searchParams.get('year');
-        
-        setSelectedFilters(newFilters);
+        // C1: state bộ lọc = đúng điều kiện API sẽ áp dụng (deriveEffective),
+        // nên panel không bao giờ hiện lựa chọn "ảo" mà URL không lọc thật.
+        const { category, country, type, year } = deriveEffective(group, slug, searchParams);
+        setSelectedFilters({ category, country, type, year });
     }, [group, slug, searchParams]);
 
     useEffect(() => {
@@ -142,28 +209,12 @@ const Catalog = ({ group }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                let apiSlug = 'phim-moi', apiType = 'danh-sach', filterParams = {};
-                const urlType = group === 'danh-sach' ? slug : searchParams.get('type');
-                const urlCats = searchParams.get('category') ? searchParams.get('category').split(',') : [];
-                const urlCountries = searchParams.get('country') ? searchParams.get('country').split(',') : [];
-
-                if (group === 'the-loai') urlCats.push(slug);
-                if (group === 'quoc-gia') urlCountries.push(slug);
-
-                const uniqueCats = [...new Set(urlCats)];
-                const uniqueCountries = [...new Set(urlCountries)];
-
-                if (urlType && urlType !== 'phim-moi') { apiSlug = urlType; apiType = 'danh-sach'; }
-                else if (uniqueCats.length > 0) { apiSlug = uniqueCats[0]; apiType = 'the-loai'; }
-                else if (uniqueCountries.length > 0) { apiSlug = uniqueCountries[0]; apiType = 'quoc-gia'; }
-
-                const finalCats = uniqueCats.filter(c => !(apiType === 'the-loai' && c === apiSlug));
-                const finalCountries = uniqueCountries.filter(c => !(apiType === 'quoc-gia' && c === apiSlug));
-
-                if (finalCats.length > 0) filterParams.category = finalCats.join(',');
-                if (finalCountries.length > 0) filterParams.country = finalCountries.join(',');
-                if (searchParams.get('year')) filterParams.year = searchParams.get('year');
-                if (searchParams.get('sort_field')) filterParams.sort_field = searchParams.get('sort_field');
+                // C1: lọc đa điều kiện thật qua API — điều kiện chính qua
+                // path + ?country=/?year= theo đúng endpoint đích
+                // (buildFilterParams). Không gửi sort_field/year lên
+                // /danh-sach/* vì vsmov bỏ qua hết.
+                const { apiSlug, apiType, category, country, type, year } = deriveEffective(group, slug, searchParams);
+                const filterParams = buildFilterParams(apiType, apiSlug, { category, country, type, year });
 
                 const data = await getMoviesBySlug(apiSlug, currentPage, apiType, filterParams);
                 if (data?.data?.items) {
@@ -178,38 +229,69 @@ const Catalog = ({ group }) => {
     }, [slug, currentPage, group, searchParams]);
 
     useEffect(() => {
-        const urlType = group === 'danh-sach' ? slug : searchParams.get('type');
-        const urlCats = searchParams.get('category') ? searchParams.get('category').split(',') : [];
-        const urlCountries = searchParams.get('country') ? searchParams.get('country').split(',') : [];
-        if (group === 'the-loai') urlCats.push(slug);
-        if (group === 'quoc-gia') urlCountries.push(slug);
-
+        // C1: tag hiện ĐỦ các điều kiện đang áp dụng thật (có thể 3 tag:
+        // vd "Hành Động • Hàn Quốc • 2024"), cùng deriveEffective với
+        // fetchData nên không còn tag cho điều kiện bị API bỏ qua.
+        const { category, country, type, year } = deriveEffective(group, slug, searchParams);
         const tags = [], titleParts = [];
-        if (urlType && urlType !== 'phim-moi') { const name = FILTER_DATA.type.find(t => t.value === urlType)?.name; if (name) { tags.push({ label: name }); titleParts.push(name); } }
-        if (menuData.theLoai.length > 0) {
-            [...new Set(urlCats)].forEach(c => { const name = menuData.theLoai.find(i => i.slug === c)?.name; if (name) { tags.push({ label: name }); titleParts.push(name); } });
-            [...new Set(urlCountries)].forEach(c => { const name = menuData.quocGia.find(i => i.slug === c)?.name; if (name) { tags.push({ label: name }); titleParts.push(name); } });
+        const pushTag = (label) => { if (label) { tags.push({ label }); titleParts.push(label); } };
+        if (type && type !== 'phim-moi') {
+            const name = type === 'tv-shows' ? 'Phim Bộ' : FILTER_DATA.type.find(t => t.value === type)?.name;
+            pushTag(name);
         }
-        if (searchParams.get('year')) { const y = searchParams.get('year'); tags.push({ label: `Năm ${y}` }); titleParts.push(`Năm ${y}`); }
+        if (category) pushTag(menuData.theLoai.find(i => i.slug === category)?.name);
+        if (country) pushTag(menuData.quocGia.find(i => i.slug === country)?.name);
+        if (year) pushTag(year);
         setActiveTags(tags.filter(t => t && t.label));
         if (titleParts.length > 0) setTitle(titleParts.join(' • ')); else if (!title) setTitle('Danh sách phim');
     }, [menuData, searchParams, slug, group]);
 
     // Handlers
+    // C1: điều hướng theo điều kiện CHÍNH (path) + điều kiện phụ (query)
+    // đúng như API nhận: thể loại -> /the-loai/<slug>?country=&year=,
+    // quốc gia -> /quoc-gia/<slug>?year=, loại hình -> /danh-sach/<slug>
+    // (riêng hoat-hinh giữ country/year vì remap về /the-loai/hoat-hinh).
+    // Chỉ chọn năm (không có điều kiện chính) thì API không lọc được nên
+    // nút Áp dụng đã bị khóa ở hàng Năm — nhánh cuối chỉ là phòng thủ.
     const handleApplyFilter = () => {
-        let path = '/danh-sach/'; path += selectedFilters.type ? selectedFilters.type : 'phim-moi';
+        const { category, country, type, year } = selectedFilters;
+        let path = '/danh-sach/phim-moi';
         const params = new URLSearchParams();
-        if (selectedFilters.category.length > 0) params.set('category', selectedFilters.category.join(','));
-        if (selectedFilters.country.length > 0) params.set('country', selectedFilters.country.join(','));
-        if (selectedFilters.year) params.set('year', selectedFilters.year);
-        if (selectedFilters.sort) params.set('sort_field', selectedFilters.sort);
+        if (category) {
+            path = `/the-loai/${category}`;
+            if (country) params.set('country', country);
+            if (year) params.set('year', year);
+        } else if (country) {
+            path = `/quoc-gia/${country}`;
+            if (year) params.set('year', year);
+        } else if (type) {
+            path = `/danh-sach/${type}`;
+            if (type === 'hoat-hinh') {
+                if (country) params.set('country', country);
+                if (year) params.set('year', year);
+            }
+        }
         params.set('page', '1');
         navigate(`${path}?${params.toString()}`); setShowFilter(false);
     };
 
-    const handleClearFilter = () => { setSelectedFilters({ category: [], country: [], year: '', type: '', sort: 'modified.time' }); navigate('/danh-sach/phim-moi'); setShowFilter(false); };
-    const toggleArrayFilter = (key, value) => { setSelectedFilters(prev => { const list = prev[key] || []; if (value === '') return { ...prev, [key]: [] }; if (list.includes(value)) return { ...prev, [key]: list.filter(item => item !== value) }; return { ...prev, [key]: [...list, value] }; }); };
-    const setSingleFilter = (key, value) => { setSelectedFilters(prev => ({ ...prev, [key]: value })); };
+    const handleClearFilter = () => { setSelectedFilters({ category: '', country: '', type: '', year: '' }); navigate('/danh-sach/phim-moi'); setShowFilter(false); };
+    // C1: kết hợp theo đúng khả năng API — thể loại + quốc gia + năm
+    // được chọn cùng lúc; chỉ loại hình phim lẻ/bộ là loại trừ mọi chiều
+    // khác (vì /danh-sach/phim-le|phim-bo bỏ qua mọi param phụ). Hoat-hinh
+    // là ngoại lệ: giữ được quốc gia + năm nhờ remap về /the-loai/*.
+    const setFilterValue = (key, value) => {
+        setSelectedFilters(prev => {
+            const next = { ...prev, [key]: value };
+            if (key === 'category' && value) { next.type = ''; }
+            if (key === 'country' && value) { if (next.type && next.type !== 'hoat-hinh') next.type = ''; }
+            if (key === 'type' && value) {
+                if (value === 'hoat-hinh') { next.category = ''; }
+                else { next.category = ''; next.country = ''; next.year = ''; }
+            }
+            return next;
+        });
+    };
     const handlePageChange = (newPage) => { if (newPage >= 1 && newPage <= totalPages) setSearchParams(prev => { prev.set('page', newPage); return prev; }); };
 
     // --- RENDER ---
@@ -286,11 +368,16 @@ const Catalog = ({ group }) => {
                         <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none transform rotate-12"><FaFilter size={250} /></div>
 
                         <div className="relative z-10 space-y-2">
-                            <FilterRow label="Loại hình" icon={<FaLayerGroup className="text-blue-400 drop-shadow"/>} items={FILTER_DATA.type} activeValue={selectedFilters.type} onSelect={(val) => setSingleFilter('type', val)} />
-                            <FilterRow label="Quốc gia" icon={<FaGlobe className="text-green-400 drop-shadow"/>} items={menuData.quocGia} activeValue={selectedFilters.country} onSelect={(val) => toggleArrayFilter('country', val)} isMulti={true} gridClass="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5" />
-                            <FilterRow label="Thể loại" icon={<FaTags className="text-yellow-400 drop-shadow"/>} items={menuData.theLoai} activeValue={selectedFilters.category} onSelect={(val) => toggleArrayFilter('category', val)} isMulti={true} gridClass="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5" />
-                            <FilterRow label="Năm" icon={<FaCalendarAlt className="text-purple-400 drop-shadow"/>} items={YEARS} activeValue={selectedFilters.year} onSelect={(val) => setSingleFilter('year', val)} gridClass="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5" />
-                            <FilterRow label="Sắp xếp" icon={<FaSortAmountDown className="text-red-400 drop-shadow"/>} items={FILTER_DATA.sort} activeValue={selectedFilters.sort} onSelect={(val) => setSingleFilter('sort', val)} />
+                            {/* C1: ghi rõ giới hạn thật của API ngay trong panel để
+                                người dùng không tưởng lọc được cái API không cho
+                                (vd: sắp xếp, lọc nhiều thể loại/quốc gia). */}
+                            <p className="text-xs text-gray-500 pb-2">
+                                Lọc được tối đa 1 thể loại + 1 quốc gia + 1 năm cùng lúc. Phim lẻ / Phim bộ không kết hợp thêm điều kiện khác.
+                            </p>
+                            <FilterRow label="Loại hình" icon={<FaLayerGroup className="text-blue-400 drop-shadow"/>} items={FILTER_DATA.type} activeValue={selectedFilters.type} onSelect={(val) => setFilterValue('type', val)} />
+                            <FilterRow label="Quốc gia" icon={<FaGlobe className="text-green-400 drop-shadow"/>} items={visibleCountries} activeValue={selectedFilters.country} onSelect={(val) => setFilterValue('country', val)} gridClass="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5" />
+                            <FilterRow label="Thể loại" icon={<FaTags className="text-yellow-400 drop-shadow"/>} items={visibleGenres} activeValue={selectedFilters.category} onSelect={(val) => setFilterValue('category', val)} gridClass="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5" />
+                            <FilterRow label="Năm phát hành" icon={<FaCalendarAlt className="text-purple-400 drop-shadow"/>} items={FILTER_DATA.years} activeValue={selectedFilters.year} onSelect={(val) => setFilterValue('year', val)} gridClass="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-1.5" disabled={!yearEnabled} hint="Chọn Thể loại, Quốc gia hoặc Hoạt hình trước — API không lọc được theo năm riêng lẻ." />
                         </div>
 
                         <div className="mt-10 flex flex-col md:flex-row justify-end gap-4 border-t border-white/5 pt-8 relative z-10">

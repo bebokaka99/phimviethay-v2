@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FaHistory, FaPlayCircle, FaTrashAlt, FaEye, FaExclamationTriangle } from 'react-icons/fa';
+import { FaHistory, FaTrashAlt, FaEye, FaExclamationTriangle } from 'react-icons/fa';
 
 import Header from '../components/layout/Header';
+import MovieCard from '../components/movies/MovieCard';
 import { getWatchHistory, getCurrentUser, clearWatchHistory, removeWatchHistoryItem } from '../services/authService';
-import { IMG_URL } from '../services/movieService';
 
 // --- HELPER FUNCTIONS ---
 const parseDate = (dateString) => {
@@ -55,60 +55,77 @@ const ConfirmationModal = ({ isOpen, title, message, onClose, onConfirm }) => {
     );
 };
 
-// --- SUB-COMPONENT: CARD LỊCH SỬ ---
-const HistoryItem = ({ item, onClick, onDelete }) => (
-    <div 
-        className="relative group cursor-pointer select-none"
-        onClick={onClick}
-    >
-        {/* Card Image Wrapper */}
-        <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden mb-3 bg-[#1a1a1a] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-lg group-hover:shadow-red-900/20 ring-1 ring-white/10 group-hover:ring-red-600">
-            <img 
-                src={`${IMG_URL}${item.movie_thumb}`} 
-                alt={item.movie_name} 
-                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-500" 
-                loading="lazy" 
-            />
-            
-            {/* Badge Tập Đang Xem */}
-            <div className="absolute top-2 right-2 bg-red-600/90 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md flex items-center gap-1 w-fit z-10">
-                <FaEye /> Bạn đang xem tập: {item.episode_name || '...'}
+// --- D1 (23/11/2026): Lịch sử dùng chung MovieCard như trang chủ — card tự
+// viết HistoryItem cũ đã gỡ (khác bo góc, không có hover popup, không có
+// badge điểm/năm). Chỉ giữ lại những gì riêng của lịch sử, phủ lên trên
+// card chung: badge "đang xem tập", nút xóa từng phim, thanh tiến trình
+// (visual như cũ), dòng "xem cách đây..." bên dưới card.
+// - Bấm vào card vẫn xem tiếp đúng tập đã dừng (onClickCapture chặn link
+//   /phim/:slug mặc định của MovieCard, chỉ với click chuột trái thường;
+//   Ctrl/Cmd+click vẫn mở tab mới như cũ). Nút Xem/Chi Tiết trong popup
+//   hover là portal ngoài wrapper nên không bị chặn.
+// - Lịch sử KHÔNG lưu năm phát hành nên MovieCard hiện badge "Unknown"
+//   (xem ghi chú ở map bên dưới) — cần nhóm sở hữu MovieCard ẩn badge
+//   năm khi không có dữ liệu, hoặc BE lưu thêm movie_year vào history.
+const HistoryItem = ({ item, onDelete, onResume }) => {
+    // Shape MovieCard cần; episode_current KHÔNG truyền để tránh trùng với
+    // badge "Bạn đang xem tập" phủ phía trên (cùng 1 thông tin).
+    const movie = {
+        _id: item.movie_slug,
+        slug: item.movie_slug,
+        name: item.movie_name,
+        origin_name: '',
+        thumb_url: item.movie_thumb,
+        quality: 'HD',
+        year: undefined,
+        vote_average: 0,
+    };
+    return (
+        <div
+            className="relative group"
+            onClickCapture={(e) => {
+                // Bỏ qua click từ nút xóa; chỉ chặn click chuột trái thường.
+                if (e.target.closest('[data-history-delete]')) return;
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                onResume(item);
+            }}
+        >
+            <MovieCard movie={movie} />
+            {/* Lớp phủ đúng vùng poster (aspect 2/3 như poster MovieCard),
+                pointer-events-none để không chặn hover/click của card. */}
+            <div className="absolute inset-x-0 top-0 aspect-[2/3] pointer-events-none">
+                {/* Badge Tập Đang Xem */}
+                <div className="absolute top-2 right-2 bg-red-600/90 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md flex items-center gap-1 w-fit z-10">
+                    <FaEye /> Bạn đang xem tập: {item.episode_name || '...'}
+                </div>
+
+                {/* Nút Xóa Từng Phim */}
+                <button
+                    data-history-delete
+                    onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+                    className="absolute top-2 left-2 bg-black/60 text-gray-400 hover:text-red-500 hover:bg-black p-2 rounded-md backdrop-blur-sm z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10 pointer-events-auto"
+                    title="Xóa khỏi lịch sử"
+                >
+                    <FaTrashAlt size={12} />
+                </button>
+
+                {/* Progress Bar (Visual, như cũ) */}
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-700">
+                    <div className="h-full bg-red-600 w-3/4 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
+                </div>
             </div>
 
-            {/* Nút Xóa Từng Phim */}
-            <button
-                onClick={(e) => { e.stopPropagation(); onDelete(item); }}
-                className="absolute top-2 left-2 bg-black/60 text-gray-400 hover:text-red-500 hover:bg-black p-2 rounded-md backdrop-blur-sm z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10"
-                title="Xóa khỏi lịch sử"
-            >
-                <FaTrashAlt size={12} />
-            </button>
-
-            {/* Overlay Play Icon */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100 bg-black/20">
-                <FaPlayCircle className="text-4xl text-white drop-shadow-xl" />
-            </div>
-            
-            {/* Progress Bar (Visual) */}
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-700">
-                <div className="h-full bg-red-600 w-3/4 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
-            </div>
-        </div>
-        
-        {/* Info */}
-        <div className="px-1">
-            <h3 className="font-bold text-sm text-gray-200 line-clamp-1 group-hover:text-red-600 transition-colors">
-                {item.movie_name}
-            </h3>
-            <div className="mt-1">
+            {/* Dòng thời gian xem — giữ nguyên thông tin cũ */}
+            <div className="px-1 mt-1">
                 <span className="text-xs text-green-400 font-bold flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                     {timeAgo(item.updated_at)}
                 </span>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // --- MAIN COMPONENT ---
 const History = () => {
@@ -200,10 +217,10 @@ const History = () => {
                 ) : history.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 gap-y-8">
                         {history.map((item, idx) => (
-                            <HistoryItem 
-                                key={idx} 
-                                item={item} 
-                                onClick={() => navigate(`/xem-phim/${item.movie_slug}?tap=${item.episode_slug}`)}
+                            <HistoryItem
+                                key={idx}
+                                item={item}
+                                onResume={(it) => navigate(`/xem-phim/${it.movie_slug}?tap=${it.episode_slug}`)}
                                 onDelete={requestDeleteOne}
                             />
                         ))}

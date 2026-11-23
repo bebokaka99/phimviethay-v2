@@ -105,9 +105,11 @@ export const getHomeData = async () => {
 
 export const getMoviesBySlug = async (slug, page = 1, type = 'danh-sach', filterParams = {}) => {
     try {
-        // Lưu ý: vsmov bỏ qua filter category/country/year/sort_field/limit,
-        // chỉ lọc được 1 thể loại/quốc gia duy nhất qua path. Cứ gửi kèm cho đủ,
-        // lọc nhiều điều kiện sẽ xử lý ở bước sau (hoặc bỏ filter).
+        // C1 (23/11/2026, kiểm chứng bằng curl): filterParams CHỈ có tác
+        // dụng khi endpoint đích nhận chúng — /the-loai/* nhận country +
+        // year, /quoc-gia/* nhận year, /danh-sach/* bỏ qua hết (kể cả
+        // sort_field). Catalog.jsx đã chỉ gửi param khi endpoint nhận;
+        // ở đây chỉ chuyển tiếp nguyên vẹn, không tự lọc gì thêm.
         const remapped = REMAP[`${type}/${slug}`];
         const finalType = remapped?.type || type;
         const finalSlug = remapped?.slug || slug;

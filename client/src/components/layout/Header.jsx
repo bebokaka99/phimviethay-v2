@@ -290,7 +290,7 @@ const Header = () => {
     const isTheLoaiActive = location.pathname.startsWith('/the-loai');
     const isQuocGiaActive = location.pathname.startsWith('/quoc-gia');
 
-    const menuPanelClass = (name) => `absolute top-full left-0 bg-[#111] border border-white/10 rounded-xl shadow-2xl transition-all duration-200 ${openMenu === name ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`;
+    const menuPanelClass = (name) => `absolute top-full left-0 bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl transition-all duration-200 ${openMenu === name ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`;
     const triggerClass = (active) => `flex items-center gap-1 ${active ? 'text-white' : 'text-gray-300 hover:text-white'}`;
     const underlineClass = (active) => `absolute left-0 right-0 -bottom-0.5 h-0.5 bg-red-600 rounded-full origin-left transition-transform duration-300 ${active ? 'scale-x-100' : 'scale-x-0'}`;
 
@@ -325,7 +325,7 @@ const Header = () => {
                                     Thể loại <FaChevronDown size={8} className={`transition-transform duration-200 ${openMenu === 'the-loai' ? 'rotate-180' : ''}`} />
                                     <span className={underlineClass(isTheLoaiActive)} />
                                 </button>
-                                <div ref={el => { menuPanelRefs.current['the-loai'] = el; }} className={`${menuPanelClass('the-loai')} w-[520px] max-w-[90vw] overflow-hidden p-5`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
+                                <div ref={el => { menuPanelRefs.current['the-loai'] = el; }} className={`${menuPanelClass('the-loai')} w-[440px] max-w-[calc(100vw-2rem)] overflow-hidden p-4`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
                                     {menuError ? (
                                         <div className="py-6 text-center">
                                             <p className="text-sm text-gray-400 mb-3">Không tải được danh sách thể loại.</p>
@@ -346,10 +346,10 @@ const Header = () => {
                                                 </div>
                                             </div>
                                             {filteredGenres.length > 0 ? (
-                                                <div className="max-h-[320px] overflow-y-auto custom-scrollbar pr-1 mt-4">
+                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar pr-1 mt-4">
                                                     {groupByFirstLetter(filteredGenres).map((group) => (
                                                         <div key={group.letter}>
-                                                            <div className="sticky top-0 z-10 bg-[#111] py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
+                                                            <div className="sticky top-0 z-10 bg-[#111]/90 backdrop-blur-md py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
                                                             <div className="flex flex-wrap gap-2 pb-3">
                                                                 {group.items.map((item) => {
                                                                     const itemActive = location.pathname === `/the-loai/${item.slug}`;
@@ -362,7 +362,7 @@ const Header = () => {
                                             ) : (
                                                 <p className="text-sm text-gray-500 mt-4">Không tìm thấy thể loại nào khớp "{genreQuery}".</p>
                                             )}
-                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition">Xem tất cả phim →</Link>
+                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition text-center">Xem tất cả phim →</Link>
                                         </>
                                     )}
                                 </div>
@@ -372,7 +372,7 @@ const Header = () => {
                                     Quốc gia <FaChevronDown size={8} className={`transition-transform duration-200 ${openMenu === 'quoc-gia' ? 'rotate-180' : ''}`} />
                                     <span className={underlineClass(isQuocGiaActive)} />
                                 </button>
-                                <div ref={el => { menuPanelRefs.current['quoc-gia'] = el; }} className={`${menuPanelClass('quoc-gia')} w-[520px] max-w-[90vw] overflow-hidden p-5`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
+                                <div ref={el => { menuPanelRefs.current['quoc-gia'] = el; }} className={`${menuPanelClass('quoc-gia')} w-[440px] max-w-[calc(100vw-2rem)] overflow-hidden p-4`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
                                     {menuError ? (
                                         <div className="py-6 text-center">
                                             <p className="text-sm text-gray-400 mb-3">Không tải được danh sách quốc gia.</p>
@@ -393,10 +393,10 @@ const Header = () => {
                                                 </div>
                                             </div>
                                             {filteredCountries.length > 0 ? (
-                                                <div className="max-h-[320px] overflow-y-auto custom-scrollbar pr-1 mt-4">
+                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar pr-1 mt-4">
                                                     {groupByFirstLetter(filteredCountries).map((group) => (
                                                         <div key={group.letter}>
-                                                            <div className="sticky top-0 z-10 bg-[#111] py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
+                                                            <div className="sticky top-0 z-10 bg-[#111]/90 backdrop-blur-md py-2 text-[11px] font-extrabold tracking-[0.1em] text-red-500">{group.letter}</div>
                                                             <div className="flex flex-wrap gap-2 pb-3">
                                                                 {group.items.map((item) => {
                                                                     const itemActive = location.pathname === `/quoc-gia/${item.slug}`;
@@ -409,7 +409,7 @@ const Header = () => {
                                             ) : (
                                                 <p className="text-sm text-gray-500 mt-4">Không tìm thấy quốc gia nào khớp "{countryQuery}".</p>
                                             )}
-                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition">Xem tất cả phim →</Link>
+                                            <Link to="/danh-sach/phim-moi" className="block mt-4 pt-3 border-t border-white/10 text-sm font-bold text-red-500 hover:text-red-400 transition text-center">Xem tất cả phim →</Link>
                                         </>
                                     )}
                                 </div>
@@ -423,6 +423,7 @@ const Header = () => {
                     </div>
 
                     <div className="relative flex items-center gap-3 lg:gap-5" ref={searchRef}>
+                        <div className="relative">
                         <div className={`relative flex items-center transition-all duration-300 ease-out ${showSearch ? 'w-[200px] sm:w-[300px] bg-[#1a1a1a] border-white/20' : 'w-10 bg-transparent border-transparent'} border rounded-full overflow-hidden h-10`}>
                             <button onClick={() => setShowSearch(!showSearch)} className={`absolute left-0 top-0 w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white transition-colors z-10`} title="Tìm kiếm (Ctrl+K)" aria-label="Tìm kiếm"><FaSearch className="text-sm"/></button>
                             <form onSubmit={handleEnterSearch} className={`flex-1 pl-10 pr-20 h-full transition-opacity duration-200 ${showSearch ? 'opacity-100' : 'opacity-0'}`}><input ref={searchInputRef} type="text" placeholder="Tìm kiếm phim..." className="w-full h-full bg-transparent text-sm text-white placeholder-gray-500 outline-none" value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={handleSearchKeyDown} /></form>
@@ -430,7 +431,7 @@ const Header = () => {
                             {showSearch && (<button onClick={() => { setShowSearch(false); setKeyword(''); setResults([]); }} className="absolute right-3 text-gray-500 hover:text-white transition">{isSearching ? <FaSpinner className="animate-spin text-red-500"/> : <FaTimes/>}</button>)}
                         </div>
                         {showSearch && (
-                            <div className="absolute top-full right-0 mt-3 w-[320px] bg-[#111] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up z-[110]">
+                            <div className="absolute left-0 top-full mt-3 w-full bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up z-[110]">
                                 {keyword.trim().length === 0 ? (
                                     <div className="p-4">
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tìm kiếm phổ biến</p>
@@ -460,13 +461,14 @@ const Header = () => {
                                 )}
                             </div>
                         )}
+                        </div>
                         {user ? (
                             <div className="relative cursor-pointer py-2" ref={userMenuRef} onMouseEnter={() => scheduleOpenMenu('user')} onMouseLeave={scheduleCloseMenu} onKeyDown={handleMenuKeyDown}>
                                 <button onClick={() => toggleMenu('user')} aria-expanded={openMenu === 'user'} aria-haspopup="true" className="flex items-center gap-2">
                                     <UserAvatar user={user} className="w-9 h-9 border border-white/10 hover:border-red-500 transition-colors" />
                                 </button>
                                 <div ref={el => { menuPanelRefs.current['user'] = el; }} className={`absolute top-full right-0 pt-2 w-64 z-50 transition-all duration-200 ${openMenu === 'user' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>
-                                    <div className="bg-[#111] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                                    <div className="bg-[#111]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
                                         <div className="p-3.5 flex gap-2.5 items-center border-b border-white/10">
                                             <UserAvatar user={user} className="w-9 h-9 border border-white/10 shrink-0" />
                                             <div className="min-w-0 flex-1">

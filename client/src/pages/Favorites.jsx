@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FaHeart, FaPlayCircle, FaTrashAlt, FaStar, FaExclamationTriangle } from 'react-icons/fa';
+import { FaHeart, FaTrashAlt, FaExclamationTriangle } from 'react-icons/fa';
 
 import Header from '../components/layout/Header';
+import MovieCard from '../components/movies/MovieCard';
 import { getFavorites, getCurrentUser, toggleFavorite } from '../services/authService';
 
 // --- SUB-COMPONENT: MODAL XÓA ---
@@ -32,65 +33,10 @@ const DeleteModal = ({ isOpen, movieName, onClose, onConfirm }) => {
     );
 };
 
-// --- SUB-COMPONENT: CARD PHIM TRONG TỦ ---
-const FavoriteItem = ({ movie, onClick, onDelete }) => (
-    <div 
-        className="relative group cursor-pointer select-none"
-        onClick={onClick}
-    >
-        {/* Card Image Wrapper */}
-        <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden mb-3 bg-[#1a1a1a] transition-all duration-300 group-hover:scale-[1.03] group-hover:shadow-lg group-hover:shadow-red-900/20 ring-1 ring-white/10 group-hover:ring-red-600">
-            <img 
-                src={movie.thumb_url} 
-                alt={movie.name} 
-                className="w-full h-full object-cover transform group-hover:brightness-75 transition-all duration-500" 
-                loading="lazy" 
-            />
-            
-            <div className="absolute top-2 left-2"> 
-                <span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase">
-                    {movie.quality}
-                </span>
-            </div>
-
-            <div className="absolute top-2 right-2">
-                <span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">
-                    {movie.vote_average || 'N/A'} <FaStar size={8} />
-                </span>
-            </div>
-
-            {/* Nút Xóa Nhanh */}
-            <div 
-                onClick={(e) => { e.stopPropagation(); onDelete(movie); }}
-                className="absolute bottom-2 right-2 bg-black/60 text-red-500 p-1.5 rounded-md hover:bg-red-600 hover:text-white transition z-30 opacity-0 group-hover:opacity-100 cursor-pointer border border-red-500/30 shadow-lg"
-                title="Xóa khỏi tủ"
-            >
-                <FaTrashAlt size={12} />
-            </div>
-
-            <div className="absolute bottom-2 left-2 z-10">
-                <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">
-                    {movie.episode_current}
-                </span>
-            </div>
-
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100 bg-black/20">
-                <FaPlayCircle className="text-4xl text-white drop-shadow-xl" />
-            </div>
-        </div>
-        
-        {/* Info */}
-        <div className="px-1">
-            <h3 className="font-bold text-sm text-gray-200 line-clamp-1 group-hover:text-red-600 transition-colors">
-                {movie.name}
-            </h3>
-            <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                <span className="line-clamp-1 max-w-[60%] text-gray-600">Đã lưu</span>
-                <span className="text-gray-400 border border-gray-700 px-1 rounded">{movie.year}</span>
-            </div>
-        </div>
-    </div>
-);
+// --- D1 (23/11/2026): Tủ phim dùng chung MovieCard như trang chủ/Profile —
+// card tự viết FavoriteItem cũ đã gỡ (khác bo góc, không có hover popup,
+// hiện "N/A" khi chưa có điểm). Nút xóa giữ nguyên, phủ lên trên card theo
+// đúng mẫu Profile.jsx (overlay top-left, hiện khi hover).
 
 // --- MAIN COMPONENT ---
 const Favorites = () => {
@@ -108,8 +54,10 @@ const Favorites = () => {
     const fetchFavs = async () => {
         const data = await getFavorites();
         
+        // D1: map về đúng shape MovieCard dùng ở Profile.jsx (origin_name
+        // 'Đã lưu' giữ lại dòng phụ cũ của card tủ phim).
         const mappedData = data.map(item => ({
-            id: item.id,
+            _id: item.id,
             slug: item.movie_slug,
             name: item.movie_name,
             thumb_url: item.movie_thumb,
@@ -117,6 +65,7 @@ const Favorites = () => {
             year: item.movie_year || '2024',
             episode_current: item.episode_current || 'Full',
             vote_average: item.vote_average ? parseFloat(item.vote_average) : 0,
+            origin_name: 'Đã lưu',
         }));
 
         setFavorites(mappedData || []);
@@ -171,12 +120,12 @@ const Favorites = () => {
                 ) : favorites.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 gap-y-8">
                         {favorites.map((movie) => (
-                            <FavoriteItem 
-                                key={movie.id} 
-                                movie={movie} 
-                                onClick={() => navigate(`/phim/${movie.slug}`)}
-                                onDelete={requestDelete}
-                            />
+                            <div key={movie._id} className="relative group">
+                                <MovieCard movie={movie} />
+                                <div onClick={(e) => { e.stopPropagation(); requestDelete(movie); }} className="absolute top-2 left-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer" title="Xóa khỏi tủ">
+                                    <div className="bg-black/80 text-white hover:text-red-500 p-2 rounded-md backdrop-blur-md border border-white/10 shadow-xl transform hover:scale-110 transition"><FaTrashAlt size={12} /></div>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 ) : (
