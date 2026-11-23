@@ -72,6 +72,7 @@ export default function TestPlayer() {
   const [m3u8, setM3u8] = useState("");
   const [m3u8Source, setM3u8Source] = useState(""); // api | manual | —
   const [m3u8Error, setM3u8Error] = useState("");
+  const [subtitles, setSubtitles] = useState([]); // [{ file, label, code }] từ /api/extract-m3u8
   const [playerStatus, setPlayerStatus] = useState("chưa khởi tạo");
   const [jwError, setJwError] = useState("");
   const [logoVerdict, setLogoVerdict] = useState("CHƯA ĐÁNH GIÁ");
@@ -216,6 +217,7 @@ export default function TestPlayer() {
 
     let url = "";
     let source = "";
+    let subs = [];
     try {
       const res = await fetch(
         `${API_BASE}/extract-m3u8?embed=${encodeURIComponent(ep.link_embed)}`
@@ -225,6 +227,12 @@ export default function TestPlayer() {
         if (data?.m3u8) {
           url = data.m3u8;
           source = "api (/api/extract-m3u8)";
+        }
+        // Phụ đề: endpoint tách mảng subtitles trong HTML trang embed
+        // (file .vtt, CORS * nên tải được từ mọi origin). Không có thì [].
+        if (Array.isArray(data?.subtitles)) {
+          subs = data.subtitles;
+          pushLog(`Phụ đề: ${subs.length} track (${subs.map((s) => s.code || s.label).join(", ") || "—"})`);
         }
       } else {
         pushLog(`GET /api/extract-m3u8 -> ${res.status} (fallback tay)`);
@@ -259,6 +267,17 @@ export default function TestPlayer() {
 
     setM3u8(url);
     setM3u8Source(source);
+    setSubtitles(subs);
+
+    // Build JWPlayer tracks từ phụ đề: Tiếng Việt mặc định (nếu có),
+    // nếu không có track vie thì track đầu tiên làm mặc định.
+    const hasVie = subs.some((s) => s.code === "vie");
+    const tracks = subs.map((s, i) => ({
+      file: s.file,
+      label: s.label || s.code || "Phụ đề",
+      kind: "captions",
+      default: s.code === "vie" || (!hasVie && i === 0),
+    }));
 
     if (!window.jwplayer) {
       setPlayerStatus("lỗi");
@@ -274,10 +293,11 @@ export default function TestPlayer() {
     }
 
     // Đổi tập khi player đã sẵn: dùng load() thay vì setup() lại.
+    // load() nhận cả tracks mới (mỗi tập có file .vtt riêng).
     if (playerRef.current && stateRef.current.ready) {
       try {
         stateRef.current.m3u8 = url;
-        playerRef.current.load({ file: url });
+        playerRef.current.load({ file: url, tracks });
         playerRef.current.play();
         setPlayerStatus("đang phát");
         pushLog(`Đổi tập qua load(): ${ep.name} — ${shortUrl(url, 80)}`);
@@ -299,6 +319,10 @@ export default function TestPlayer() {
         width: "100%",
         aspectratio: "16:9",
         autostart: false,
+        // Phụ đề: tracks từ endpoint extract-m3u8 (file .vtt tách từ
+        // trang embed vsmov). Tiếng Việt mặc định. Không có sub thì
+        // tracks = [] — player vẫn chạy bình thường.
+        tracks,
         // Logo PhimVietHay tren thanh control-bar — y cong thuc vsmov
         // (theme-vsphim episode.blade.php: logo { file, link, position }).
         // Chi khac: file = logo cua web minh, link = trang chu,
@@ -676,6 +700,7 @@ export default function TestPlayer() {
                     {m3u8 && (
                       <tr><td className="py-1.5 pr-2 text-gray-400">m3u8 URL</td><td className="break-all">{shortUrl(m3u8, 110)}</td></tr>
                     )}
+                    <tr><td className="py-1.5 pr-2 text-gray-400">Phụ đề</td><td>{subtitles.length ? `${subtitles.length} track: ${subtitles.map((s) => s.label).join(", ")}` : "không có (tập này không có file .vtt trên trang embed)"}</td></tr>
                     {m3u8Error && (
                       <tr><td className="py-1.5 pr-2 text-gray-400">Lỗi m3u8</td><td className="text-red-400">{m3u8Error}</td></tr>
                     )}

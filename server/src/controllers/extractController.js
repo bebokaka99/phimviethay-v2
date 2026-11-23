@@ -91,6 +91,56 @@ function parseM3u8(html) {
     return null;
 }
 
+// Parse mảng phụ đề trong HTML trang embed (phát hiện 24/11/2026).
+// Trang embed nhúng: subtitles: [{"name":"vie ...","type":"local",
+// "url":"/video/<uuid>/subtitle/vie_....vtt","code":"vie"}, {...eng...}]
+// URL trong đó là tương đối (bắt đầu /video/...) nên phải resolve theo
+// origin của trang embed. File .vtt trả Access-Control-Allow-Origin: *
+// (đo 24/11/2026, cả origin HTTP lẫn HTTPS đều được) nên JWPlayer tải
+// được từ mọi domain — khác với segment video (chỉ cho HTTPS).
+// Trả về [{ file (URL tuyệt đối), label, code }] hoặc [] nếu không có.
+const SUBTITLE_LABELS = {
+    vie: 'Tiếng Việt',
+    eng: 'English',
+    chi: 'Tiếng Trung',
+    kor: 'Tiếng Hàn',
+    jpn: 'Tiếng Nhật',
+    tha: 'Tiếng Thái',
+    ind: 'Tiếng Indo',
+    fre: 'Tiếng Pháp',
+    ger: 'Tiếng Đức',
+    spa: 'Tiếng Tây Ban Nha',
+    rus: 'Tiếng Nga',
+};
+
+function parseSubtitles(html, embedOrigin) {
+    try {
+        const m = html.match(/subtitles\s*:\s*(\[.*?\])\s*[,}\]]/s);
+        if (!m || !m[1]) return [];
+        const arr = JSON.parse(m[1]);
+        if (!Array.isArray(arr)) return [];
+        const out = [];
+        for (const item of arr) {
+            if (!item || typeof item.url !== 'string') continue;
+            const rel = unescapeUrl(item.url);
+            let file = rel;
+            try {
+                file = new URL(rel, embedOrigin).toString();
+            } catch {
+                if (!isHttpUrl(file)) continue;
+            }
+            if (!isHttpUrl(file)) continue;
+            if (!/\.vtt(\?|$)/i.test(file)) continue;
+            const code = String(item.code || '').toLowerCase();
+            const label = SUBTITLE_LABELS[code] || (code ? code.toUpperCase() : 'Phụ đề');
+            out.push({ file, label, code: code || undefined });
+        }
+        return out;
+    } catch {
+        return [];
+    }
+}
+
 async function extractM3u8(req, res) {
     const embed = req.query.embed;
 
@@ -113,7 +163,7 @@ async function extractM3u8(req, res) {
     const now = Date.now();
     const cached = cache.get(embed);
     if (cached && cached.expiresAt > now) {
-        return res.json({ m3u8: cached.m3u8 });
+        return res.json({ m3u8: cached.m3u8, subtitles: cached.subtitles || [] });
     }
     cache.delete(embed);
 
@@ -147,8 +197,12 @@ async function extractM3u8(req, res) {
         return res.status(404).json({ error: 'Không tách được m3u8' });
     }
 
-    cache.set(embed, { m3u8, expiresAt: now + CACHE_TTL_MS });
-    return res.json({ m3u8 });
+    // Phụ đề: tách mảng subtitles trong HTML trang embed (nếu có).
+    // Không có sub thì trả [] — player vẫn chạy bình thường, chỉ không có track.
+    const subtitles = parseSubtitles(html, embedUrl.origin);
+
+    cache.set(embed, { m3u8, subtitles, expiresAt: now + CACHE_TTL_MS });
+    return res.json({ m3u8, subtitles });
 }
 
 module.exports = { extractM3u8 };
