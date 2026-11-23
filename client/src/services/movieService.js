@@ -1,5 +1,4 @@
 import axios from 'axios';
-import axiosInstance from './axiosConfig'; // Dùng instance đã cấu hình chuẩn (cho các API backend riêng: auth/favorite/history...)
 
 // --- CẤU HÌNH API VSMOV (thay Ophim đã chết 22/11/2026) ---
 // Docs: https://vsmov.com/api-document — public, không cần token.
@@ -49,12 +48,13 @@ const normalizeList = (resData, titlePage) => {
     };
 };
 
-// Vsmov không có /danh-sach/hoat-hinh và /danh-sach/tv-shows (404),
-// /the-loai/tinh-cam trả 0 phim -> remap về endpoint có dữ liệu thật.
+// Vsmov không có /danh-sach/hoat-hinh (404), /the-loai/tinh-cam trả 0 phim
+// -> remap về endpoint có dữ liệu thật. Link TV Shows cũ (tv-shows) remap
+// về /danh-sach/phim-bo vì Phim Bộ (tmdb.type='tv') mới là series thật.
 const REMAP = {
     'danh-sach/hoat-hinh': { type: 'the-loai', slug: 'hoat-hinh' },
-    'danh-sach/tv-shows': { type: 'the-loai', slug: 'truyen-hinh-thuc-te' },
-    'the-loai/tv-shows': { type: 'the-loai', slug: 'truyen-hinh-thuc-te' },
+    'danh-sach/tv-shows': { type: 'danh-sach', slug: 'phim-bo' },
+    'the-loai/tv-shows': { type: 'danh-sach', slug: 'phim-bo' },
     'the-loai/tinh-cam': { type: 'the-loai', slug: 'lang-man' },
 };
 
@@ -95,22 +95,7 @@ export const getMovieDetail = async (slug) => {
     }
 };
 
-// 2. Lấy Trending từ Backend mình (giữ nguyên — backend Render hiện trả []).
-export const getTrendingMovies = async () => {
-    try {
-        const data = await axiosInstance.get(`/movies/trending`);
-        return (Array.isArray(data) ? data : []).map(m => ({
-            ...m,
-            thumb_url: resolveImg(m.thumb_url),
-            poster_url: resolveImg(m.poster_url),
-            origin_name: `${m.view_count || 0} lượt xem`
-        }));
-    } catch (e) {
-        return [];
-    }
-};
-
-// 3. Home banner — vsmov KHÔNG có /home (404) nên lấy phim mới cập nhật thay thế.
+// 2. Home banner — vsmov KHÔNG có /home (404) nên lấy phim mới cập nhật thay thế.
 export const getHomeData = async () => {
     try {
         const response = await client.get('/danh-sach/phim-moi-cap-nhat', { params: { page: 1 } });
@@ -132,18 +117,32 @@ export const getMoviesBySlug = async (slug, page = 1, type = 'danh-sach', filter
     } catch (error) { return null; }
 };
 
+// Giai đoạn 3 (L8): cache trong phiên + retry khi lỗi (tối đa 2 lần,
+// cách nhau ~1s). Trả null khi tải thất bại để Header hiện trạng thái lỗi
+// + nút thử lại, thay vì menu trống im lặng như trước.
+let menuCache = null;
 export const getMenuData = async () => {
-    try {
-        const [theLoai, quocGia] = await Promise.all([
-            client.get('/the-loai'),
-            client.get('/quoc-gia')
-        ]);
-        // Vsmov: { status: "success", data: { items } } — khớp shape Ophim cũ.
-        return {
-            theLoai: theLoai.data?.data?.items || theLoai.data?.items || [],
-            quocGia: quocGia.data?.data?.items || quocGia.data?.items || []
-        };
-    } catch (error) { return { theLoai: [], quocGia: [] }; }
+    if (menuCache) return menuCache;
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const [theLoai, quocGia] = await Promise.all([
+                client.get('/the-loai'),
+                client.get('/quoc-gia')
+            ]);
+            // Vsmov: { status: "success", data: { items } } — khớp shape Ophim cũ.
+            menuCache = {
+                theLoai: theLoai.data?.data?.items || theLoai.data?.items || [],
+                quocGia: quocGia.data?.data?.items || quocGia.data?.items || []
+            };
+            return menuCache;
+        } catch (error) {
+            lastError = error;
+            if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+    console.error('Lỗi tải menu:', lastError);
+    return null;
 };
 
 export const searchMovies = async (keyword, page = 1) => {

@@ -15,13 +15,15 @@ class History {
                 updated_at = NOW()
         `;
 
+        // mysql2 execute() ném lỗi nếu bind param là undefined — chuẩn
+        // hóa các trường tùy chọn về null (các cột này đều cho phép NULL).
         const [result] = await db.execute(sql, [
             userId, 
             movieSlug, 
-            episodeSlug, 
-            movieName, 
-            movieThumb, 
-            episodeName
+            episodeSlug || null, 
+            movieName || null, 
+            movieThumb || null, 
+            episodeName || null
         ]);
         return result;
     }

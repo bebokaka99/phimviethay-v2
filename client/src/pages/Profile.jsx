@@ -8,6 +8,7 @@ import Header from '../components/layout/Header';
 import MovieCard from '../components/movies/MovieCard';
 import UserAvatar from '../components/common/UserAvatar';
 import { getFavorites, getCurrentUser, updateProfile, logout, toggleFavorite } from '../services/authService';
+import { getRoleLabel } from '../utils/roleLabel';
 
 const CLOUD_NAME = 'dffwgj4x3';
 const UPLOAD_PRESET = 'phimviethay_preset';
@@ -133,7 +134,7 @@ const Profile = () => {
                         <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-2xl mb-2">{user.fullname || user.username}</h1>
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm font-medium text-gray-300">
                             <span className="drop-shadow-md">@{user.username}</span><span className="w-1 h-1 bg-gray-500 rounded-full"></span><span className="drop-shadow-md">{user.email}</span>
-                            {user.role === 'admin' && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold tracking-wider shadow-lg shadow-red-900/30">ADMIN</span>}
+                            {(user.role === 'admin' || user.role === 'super_admin') && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shadow-lg shadow-red-900/30">{getRoleLabel(user.role)}</span>}
                         </div>
                     </div>
                     <div className="flex gap-3 mb-2">

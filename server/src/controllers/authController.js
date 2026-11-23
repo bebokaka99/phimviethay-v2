@@ -21,7 +21,8 @@ exports.register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Mặc định đăng ký thường là auth_type = local
+        // Đăng ký thường (local). Cột auth_type đã bỏ khỏi schema 001
+        // (Google auth tạm loại bỏ 23/11/2026) nên không ghi nữa.
         await User.create(username, email, hashedPassword, fullname);
 
         res.status(201).json({ message: 'Đăng ký thành công!' });

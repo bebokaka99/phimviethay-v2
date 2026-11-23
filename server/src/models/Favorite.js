@@ -16,7 +16,10 @@ class Favorite {
             userId, 
             slug, 
             name, 
-            thumb, 
+            // mysql2 execute() ném lỗi nếu bind param là undefined — chuẩn
+            // hóa về null (cột movie_thumb cho phép NULL). Các trường còn
+            // lại đã có mặc định || ở trên.
+            thumb || null, 
             quality || 'HD', 
             year || '2024', 
             episode_current || 'Full', 

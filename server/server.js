@@ -65,7 +65,6 @@ app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/user', require('./src/routes/userRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
-app.use('/api/movies', require('./src/routes/movieRoutes'));
 app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
 
 app.use((err, req, res, next) => {

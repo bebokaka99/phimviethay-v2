@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { login, getCurrentUser, getMe } from '../services/authService';
 import { FaArrowLeft, FaUser, FaLock, FaPlayCircle, FaExclamationTriangle } from 'react-icons/fa';
-import { FcGoogle } from 'react-icons/fc';
+// Tạm ẩn — Google auth làm lại sau (đăng nhập Google tạm dừng, xem 002_add_google_auth.sql)
+// import { FcGoogle } from 'react-icons/fc';
 
 const SessionExpiredAlert = ({ onClose }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-fade-in">
@@ -70,12 +71,13 @@ const Login = () => {
         }
     };
 
-    const handleGoogleLogin = () => {
-        let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        API_URL = API_URL.replace(/\/$/, '');
-        API_URL = API_URL.replace(/\/api$/, '');
-        window.open(`${API_URL}/api/auth/google`, "_self");
-    };
+    // Tạm ẩn — Google auth làm lại sau (đăng nhập Google tạm dừng)
+    // const handleGoogleLogin = () => {
+    //     let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    //     API_URL = API_URL.replace(/\/$/, '');
+    //     API_URL = API_URL.replace(/\/api$/, '');
+    //     window.open(`${API_URL}/api/auth/google`, "_self");
+    // };
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden font-sans">
@@ -114,6 +116,7 @@ const Login = () => {
                     </button>
                 </form>
 
+                {/* Tạm ẩn — Google auth làm lại sau (đăng nhập Google tạm dừng)
                 <div className="my-6 flex items-center gap-4">
                     <div className="h-[1px] bg-white/10 flex-1"></div>
                     <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Hoặc</span>
@@ -127,6 +130,7 @@ const Login = () => {
                     <FcGoogle className="text-2xl group-hover:scale-110 transition-transform" /> 
                     <span>Đăng nhập bằng Google</span>
                 </button>
+                */}
 
                 <div className="mt-8 text-gray-400 text-sm text-center">
                     Bạn mới tham gia PhimVietHay? <span onClick={() => navigate('/register')} className="text-white hover:underline cursor-pointer font-bold ml-1 transition-colors hover:text-phim-accent">Đăng ký ngay</span>.

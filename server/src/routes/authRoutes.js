@@ -12,12 +12,26 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 
 // GOOGLE AUTH
-router.get('/google', passport.authenticate('google', { 
+// Google login chỉ bật khi đủ credential (passport.js chỉ đăng ký strategy
+// khi đủ GOOGLE_CLIENT_ID/SECRET/CALLBACK_URL). Khi chưa cấu hình, trả 503
+// rõ ràng thay vì để passport ném "Unknown authentication strategy".
+const requireGoogleAuth = (req, res, next) => {
+    if (!passport._strategy('google')) {
+        return res.status(503).json({
+            success: false,
+            message: 'Google login chưa cấu hình. Vui lòng đăng nhập bằng email/mật khẩu.'
+        });
+    }
+    next();
+};
+
+router.get('/google', requireGoogleAuth, passport.authenticate('google', { 
     scope: ['profile', 'email'], 
     session: false 
 }));
 
 router.get('/google/callback', 
+    requireGoogleAuth,
     passport.authenticate('google', { 
         failureRedirect: `${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=google_failed`, 
         session: false 

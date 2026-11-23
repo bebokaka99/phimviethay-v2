@@ -26,12 +26,22 @@ class User {
     }
 
     // Tạo user thường (Local Register)
+    // Lưu ý: schema 001 hiện KHÔNG còn cột auth_type (Google auth tạm bỏ
+    // 23/11/2026) nên INSERT không ghi auth_type nữa.
     static async create(username, email, password, fullname) {
         const [result] = await db.execute(
-            'INSERT INTO users (username, email, password, fullname, auth_type) VALUES (?, ?, ?, ?, ?)',
-            [username, email, password, fullname, 'local']
+            'INSERT INTO users (username, email, password, fullname) VALUES (?, ?, ?, ?)',
+            [username, email, password, fullname]
         );
         return result.insertId;
+    }
+
+    // Xóa user (admin). adminController.deleteUser gọi hàm này; trả về
+    // kết quả mysql2 (có affectedRows). Xóa user CASCADE favorites/
+    // history/comments/likes của user đó (khóa ngoại trong 001_init.sql).
+    static async delete(id) {
+        const [result] = await db.execute('DELETE FROM users WHERE id = ?', [id]);
+        return result;
     }
 
     static async findById(id) {

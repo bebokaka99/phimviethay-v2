@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register, getCurrentUser } from '../services/authService';
 import { FaArrowLeft, FaUser, FaEnvelope, FaLock, FaIdCard, FaCheckCircle, FaExclamationCircle, FaTimes } from 'react-icons/fa';
-import { FcGoogle } from 'react-icons/fc'; // [NEW] Import icon Google
+// Tạm ẩn — Google auth làm lại sau (đăng ký Google tạm dừng, xem 002_add_google_auth.sql)
+// import { FcGoogle } from 'react-icons/fc'; // [NEW] Import icon Google
 import LogoImg from '../assets/logo.png';
 
 // Component Toast thông báo (Giữ nguyên logic cũ của bạn)
@@ -52,16 +53,17 @@ const Register = () => {
         }
     };
 
+    // Tạm ẩn — Google auth làm lại sau (đăng ký Google tạm dừng)
     // [NEW] Hàm xử lý Google Login
-    const handleGoogleLogin = () => {
-        let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        // Xử lý chuỗi để đảm bảo đúng đường dẫn Auth
-        API_URL = API_URL.replace(/\/$/, '');
-        API_URL = API_URL.replace(/\/api$/, '');
-        
-        // Chuyển hướng sang Google
-        window.open(`${API_URL}/api/auth/google`, "_self");
-    };
+    // const handleGoogleLogin = () => {
+    //     let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    //     // Xử lý chuỗi để đảm bảo đúng đường dẫn Auth
+    //     API_URL = API_URL.replace(/\/$/, '');
+    //     API_URL = API_URL.replace(/\/api$/, '');
+    //
+    //     // Chuyển hướng sang Google
+    //     window.open(`${API_URL}/api/auth/google`, "_self");
+    // };
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden font-sans py-10">
@@ -110,20 +112,18 @@ const Register = () => {
                     </button>
                 </form>
 
-                {/* [NEW] Nút đăng ký nhanh bằng Google */}
-                <div className="my-6 flex items-center gap-4">
+                {/* Tạm ẩn — Google auth làm lại sau (đăng ký Google tạm dừng).
+                    Nút đăng ký nhanh bằng Google (divider "Hoặc" + button FcGoogle)
+                    đã comment lại tại đây để khôi phục dễ. */}
+                {/* <div className="my-6 flex items-center gap-4">
                     <div className="h-[1px] bg-white/10 flex-1"></div>
                     <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Hoặc</span>
                     <div className="h-[1px] bg-white/10 flex-1"></div>
                 </div>
-
-                <button 
-                    onClick={handleGoogleLogin}
-                    className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-md hover:bg-gray-100 transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg group"
-                >
-                    <FcGoogle className="text-2xl group-hover:scale-110 transition-transform" /> 
+                <button onClick={handleGoogleLogin} className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-md hover:bg-gray-100 transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg group">
+                    <FcGoogle className="text-2xl group-hover:scale-110 transition-transform" />
                     <span>Đăng ký nhanh bằng Google</span>
-                </button>
+                </button> */}
 
                 <div className="mt-6 text-gray-400 text-sm text-center">
                     Đã có tài khoản? <span onClick={() => navigate('/login')} className="text-white hover:underline cursor-pointer font-bold ml-1 transition-colors hover:text-phim-accent">Đăng nhập ngay</span>.
