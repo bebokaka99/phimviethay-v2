@@ -22,11 +22,12 @@ const MovieCard = memo(({ movie }) => {
     const [detailLoading, setDetailLoading] = useState(false);
     const cardRef = useRef(null);
     const popupRef = useRef(null);
-    // Bổ sung 1 vòng 2 (23/11/2026): hover-intent ~2000ms — popup chỉ hiện
-    // khi giữ chuột liên tục trên 1 card đủ 2s; lướt nhanh qua thì không
-    // hiện, không gọi API. Mỗi card tự quản lý timer của mình.
+    // Bổ sung 1 vòng 2 (23/11/2026), đổi sang 1s theo user (23/11/2026):
+    // hover-intent ~1000ms — popup chỉ hiện khi giữ chuột liên tục trên
+    // 1 card đủ 1s; lướt nhanh qua thì không hiện, không gọi API.
+    // Mỗi card tự quản lý timer của mình.
     const intentTimer = useRef(null);
-    const HOVER_INTENT_MS = 2000;
+    const HOVER_INTENT_MS = 1000;
     const hoveredRef = useRef(false);
     const detailFetchedRef = useRef(false);
 
@@ -60,7 +61,7 @@ const MovieCard = memo(({ movie }) => {
         return doc.body.textContent || "";
     };
 
-    // Bổ sung 1 vòng 2: chỉ fetch chi tiết KHI hover-intent đã đủ 2s
+    // Bổ sung 1 vòng 2: chỉ fetch chi tiết KHI hover-intent đã đủ 1s
     // (popup sắp hiện) — không fetch ngay khi chuột vừa vào card, để
     // lướt nhanh qua nhiều thẻ không gọi API vô ích. Chỉ 1 lần mỗi thẻ.
     const fetchDetail = async () => {
@@ -89,9 +90,9 @@ const MovieCard = memo(({ movie }) => {
         }
     };
 
-    // Bổ sung 1 vòng 2 (hover-intent 2000ms): chuột vào card chỉ bắt đầu
-    // đếm; đủ 2s giữ liên tục mới hiện popup (dữ liệu card có sẵn + skeleton)
-    // rồi mới fetch chi tiết. Rời card trước 2s thì hủy đếm, không hiện gì.
+    // Bổ sung 1 vòng 2 (hover-intent 1000ms): chuột vào card chỉ bắt đầu
+    // đếm; đủ 1s giữ liên tục mới hiện popup (dữ liệu card có sẵn + skeleton)
+    // rồi mới fetch chi tiết. Rời card trước 1s thì hủy đếm, không hiện gì.
     // Trỏ sang card khác thì card cũ hủy timer của mình, card mới đếm lại.
     const handleMouseEnter = () => {
         if (window.innerWidth < 1024) return;
@@ -201,7 +202,11 @@ const MovieCard = memo(({ movie }) => {
             <Link ref={cardRef} to={`/phim/${movie.slug}`} className="relative group cursor-pointer select-none h-full flex flex-col block transform hover:scale-[1.06] hover:-translate-y-1 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform z-10 hover:z-20" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                 
                 {/* GLASS CONTAINER with hover ring & shadow (loại bỏ gradient blur-md tốn render) */}
-                <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden mb-3 bg-[#1a1a1a] shadow-xl transition-[box-shadow,border-color,background-color] duration-500 ease-out ring-1 ring-white/10 
+                {/* Nhóm D (Custom UI, 23/11/2026): bo góc card theo theme — dùng biến
+                    --card-radius do ThemeContext (nhóm B) đặt trên documentElement
+                    (square=4px, medium=12px, round=20px); fallback 12px khi chưa
+                    có biến để card không bị vuông 0px. Badge giữ bo góc riêng. */}
+                <div className="relative w-full aspect-[2/3] rounded-[var(--card-radius,12px)] overflow-hidden mb-3 bg-[#1a1a1a] shadow-xl transition-[box-shadow,border-color,background-color] duration-500 ease-out ring-1 ring-white/10 
                             group-hover:ring-1 group-hover:ring-red-500/80 group-hover:shadow-[0_0_28px_rgba(220,38,38,0.8)] group-hover:bg-black/50">
 
                     <OptimizedImage src={posterUrl} width={320} alt={movie.name} className="w-full h-full object-cover transform transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.07] group-hover:opacity-80" />

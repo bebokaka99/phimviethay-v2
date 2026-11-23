@@ -5,11 +5,14 @@ import { router } from './routes'
 // QUAN TRỌNG: Phải import file này để nhận màu nền và Tailwind
 import './index.css' 
 import { HelmetProvider } from 'react-helmet-async';
+import { ThemeProvider } from './context/ThemeContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <HelmetProvider>
-        <RouterProvider router={router} />
-    </HelmetProvider>
+    <ThemeProvider>
+      <HelmetProvider>
+          <RouterProvider router={router} />
+      </HelmetProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 )

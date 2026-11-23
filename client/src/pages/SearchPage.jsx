@@ -64,8 +64,8 @@ const SearchPage = () => {
                 <div className="mb-10 border-b border-gray-800 pb-6 flex items-end justify-between">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                            <span className="bg-red-600 p-3 rounded-full shadow-lg shadow-red-900/20"><FaSearch className="text-white text-xl" /></span>
-                            Kết quả cho: <span className="text-red-500 italic">"{keyword}"</span>
+                            <span className="bg-[var(--accent)] p-3 rounded-full shadow-lg shadow-red-900/20"><FaSearch className="text-white text-xl" /></span>
+                            Kết quả cho: <span className="text-[var(--accent)] italic">"{keyword}"</span>
                         </h2>
                         {!loading && <p className="text-gray-400 mt-4 ml-2 text-sm">Tìm thấy <strong className="text-white">{totalItems}</strong> phim (Trang {currentPage}/{totalPages})</p>}
                     </div>
@@ -80,9 +80,9 @@ const SearchPage = () => {
                                 <MovieGrid movies={movies} />
                                 {totalPages > 1 && (
                                     <div className="flex justify-center items-center gap-4 mt-16">
-                                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition ${currentPage === 1 ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/10 hover:bg-red-600 hover:text-white'}`}><FaChevronLeft /> Trước</button>
-                                        <div className="flex items-center gap-2"><span className="text-gray-400 font-medium text-sm">Trang</span><span className="bg-red-600 text-white font-bold w-10 h-10 flex items-center justify-center rounded-full shadow-lg border border-red-500">{currentPage}</span><span className="text-gray-400 font-medium text-sm">/ {totalPages}</span></div>
-                                        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition ${currentPage === totalPages ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/10 hover:bg-red-600 hover:text-white'}`}>Sau <FaChevronRight /></button>
+                                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition ${currentPage === 1 ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/10 hover:bg-[var(--accent)] hover:text-white'}`}><FaChevronLeft /> Trước</button>
+                                        <div className="flex items-center gap-2"><span className="text-gray-400 font-medium text-sm">Trang</span><span className="bg-[var(--accent)] text-white font-bold w-10 h-10 flex items-center justify-center rounded-full shadow-lg border border-[var(--accent)]">{currentPage}</span><span className="text-gray-400 font-medium text-sm">/ {totalPages}</span></div>
+                                        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition ${currentPage === totalPages ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/10 hover:bg-[var(--accent)] hover:text-white'}`}>Sau <FaChevronRight /></button>
                                     </div>
                                 )}
                             </>
@@ -91,7 +91,7 @@ const SearchPage = () => {
                                 <FaFilm className="text-7xl mb-4 text-gray-600" />
                                 <p className="text-2xl font-bold text-gray-400">Không tìm thấy phim nào.</p>
                                 <p className="text-sm mt-2">Hãy thử tìm bằng tên tiếng Anh hoặc từ khóa ngắn hơn.</p>
-                                <button onClick={() => navigate('/')} className="mt-6 px-6 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition font-bold">Về trang chủ</button>
+                                <button onClick={() => navigate('/')} className="mt-6 px-6 py-2 bg-[var(--accent)] text-white rounded-full hover:bg-[var(--accent-hover)] transition font-bold">Về trang chủ</button>
                             </div>
                         )}
                     </>

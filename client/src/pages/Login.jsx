@@ -13,7 +13,7 @@ const SessionExpiredAlert = ({ onClose }) => (
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Phiên đăng nhập hết hạn</h3>
             <p className="text-gray-400 text-sm mb-6">Vui lòng đăng nhập lại để tiếp tục.</p>
-            <button onClick={onClose} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all">Đã hiểu</button>
+            <button onClick={onClose} className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold rounded-xl transition-all">Đã hiểu</button>
         </div>
     </div>
 );
@@ -141,7 +141,7 @@ const Login = () => {
                         <input type="password" placeholder="Mật khẩu" required className="w-full pl-12 pr-4 py-4 rounded-xl bg-[#1a1a1a]/80 text-white border border-white/10 focus:border-phim-accent focus:ring-2 focus:ring-phim-accent/30 transition-all outline-none placeholder-gray-500" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
                     </div>
                     
-                    <button disabled={loading} className="w-full py-4 rounded-xl bg-gradient-to-r from-phim-accent to-red-700 text-white font-bold text-lg hover:from-red-700 hover:to-phim-accent transition-all transform active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-red-900/30 hover:shadow-red-900/50 relative overflow-hidden group">
+                    <button disabled={loading} className="w-full py-4 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white font-bold text-lg hover:from-[var(--accent-hover)] hover:to-[var(--accent)] transition-all transform active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-red-900/30 hover:shadow-red-900/50 relative overflow-hidden group">
                         <span className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></span>
                         <span className="relative z-10">{loading ? 'Đang xử lý...' : 'Đăng Nhập Ngay'}</span>
                     </button>

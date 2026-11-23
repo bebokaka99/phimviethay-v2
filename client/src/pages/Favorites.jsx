@@ -92,7 +92,7 @@ const Favorites = () => {
     };
 
     return (
-        <div className="bg-phim-dark min-h-screen text-white font-sans pb-20 selection:bg-red-600 selection:text-white">
+        <div className="bg-phim-dark min-h-screen text-white font-sans pb-20 selection:bg-[var(--accent)] selection:text-white">
             <Helmet>
                 <title>Tủ Phim Của Tôi | PhimVietHay</title>
             </Helmet>
@@ -102,7 +102,7 @@ const Favorites = () => {
                 {/* Header */}
                 <div className="mb-10 border-b border-white/10 pb-6 flex items-end justify-between">
                     <h1 className="text-2xl md:text-3xl font-bold uppercase tracking-wide flex items-center gap-3">
-                        <span className="text-red-600 border-l-4 border-red-600 pl-3">Tủ Phim Của Tôi</span>
+                        <span className="text-[var(--accent)] border-l-4 border-[var(--accent)] pl-3">Tủ Phim Của Tôi</span>
                     </h1>
                     <span className="text-gray-400 font-bold bg-white/5 px-3 py-1 rounded-lg border border-white/5">
                         {favorites.length} phim
@@ -112,7 +112,7 @@ const Favorites = () => {
                 {/* Content */}
                 {loading ? (
                     <div className="flex justify-center py-40">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
                     </div>
                 ) : favorites.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 gap-y-8">
@@ -140,7 +140,7 @@ const Favorites = () => {
                         <FaHeart className="text-6xl mb-4 text-gray-700 animate-pulse"/>
                         <p className="text-xl font-bold text-gray-400">Tủ phim trống trơn</p>
                         <p className="text-sm text-gray-600 mt-2 mb-6">Lưu lại những bộ phim hay để xem sau nhé!</p>
-                        <button onClick={() => navigate('/')} className="bg-red-600 px-8 py-3 rounded-full font-bold hover:bg-red-700 transition text-white shadow-lg shadow-red-900/20">
+                        <button onClick={() => navigate('/')} className="bg-[var(--accent)] px-8 py-3 rounded-full font-bold hover:bg-[var(--accent-hover)] transition text-white shadow-lg shadow-red-900/20">
                             Khám phá ngay
                         </button>
                     </div>

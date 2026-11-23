@@ -278,7 +278,7 @@ const HeroSection = ({ movies }) => {
                                         <span className="bg-white/10 border border-white/10 px-2 py-0.5 md:px-3 md:py-1 rounded">
                                             {movie.year}
                                         </span>
-                                        <span className="bg-red-600 px-2 py-0.5 md:px-3 md:py-1 rounded text-white font-bold uppercase tracking-wider shadow-lg shadow-red-900/40 text-[10px] md:text-sm">
+                                        <span className="bg-[var(--accent)] px-2 py-0.5 md:px-3 md:py-1 rounded text-white font-bold uppercase tracking-wider shadow-lg shadow-red-900/40 text-[10px] md:text-sm">
                                             {movie.quality || 'HD'}
                                         </span>
                                         {movie.lang && (
@@ -297,7 +297,7 @@ const HeroSection = ({ movies }) => {
                                     <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto pt-2">
                                         <Link 
                                             to={`/xem-phim/${movie.slug}`} 
-                                            className="flex-1 md:flex-none bg-red-600 text-white px-4 py-3 md:px-10 md:py-4 rounded-xl hover:bg-red-700 transition font-bold flex items-center justify-center gap-2 md:gap-3 shadow-xl shadow-red-900/40 active:scale-95 text-sm md:text-lg"
+                                            className="flex-1 md:flex-none bg-[var(--accent)] text-white px-4 py-3 md:px-10 md:py-4 rounded-xl hover:bg-[var(--accent-hover)] transition font-bold flex items-center justify-center gap-2 md:gap-3 shadow-xl shadow-red-900/40 active:scale-95 text-sm md:text-lg"
                                         >
                                             <FaPlay /> XEM NGAY
                                         </Link>
@@ -347,7 +347,7 @@ const HeroSection = ({ movies }) => {
                             <div
                                 className={`relative w-full h-14 lg:h-16 rounded-xl overflow-hidden transition-all duration-500 ease-out ${
                                     isActive 
-                                        ? 'scale-110 -translate-y-1.5 shadow-2xl shadow-red-950/70 ring-2 ring-red-500/80 z-10 opacity-100' 
+                                        ? 'scale-110 -translate-y-1.5 shadow-2xl shadow-red-950/70 ring-2 ring-[var(--accent)] z-10 opacity-100' 
                                         : 'opacity-50 hover:opacity-90 hover:scale-105 hover:-translate-y-0.5 border border-white/10'
                                 }`}
                             >
@@ -369,7 +369,7 @@ const HeroSection = ({ movies }) => {
                                 {isActive && (
                                     <div 
                                         data-hero-progress
-                                        className="h-full w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.9)] origin-left"
+                                        className="h-full w-full bg-gradient-to-r from-[var(--accent)] via-[var(--accent-hover)] to-[var(--accent)] shadow-[0_0_10px_rgba(var(--accent-rgb),0.9)] origin-left"
                                         style={{ transform: 'scaleX(0)' }}
                                     />
                                 )}
@@ -395,7 +395,7 @@ const HeroSection = ({ movies }) => {
                             {isActive && (
                                 <div
                                     data-hero-progress
-                                    className="h-full w-full bg-red-600 rounded-full origin-left"
+                                    className="h-full w-full bg-[var(--accent)] rounded-full origin-left"
                                     style={{ transform: 'scaleX(0)' }}
                                 />
                             )}

@@ -11,7 +11,7 @@ export default {
         'phim-dark': 'transparent',
 
         // 2. Màu đỏ thương hiệu (Netflix Red)
-        'phim-accent': '#e50914',
+        'phim-accent': 'var(--accent)', // Nhóm B: theo theme (mặc định #e50914)
 
         // 3. Các màu nền phụ cho Card, Modal, Sidebar (Bán trong suốt)
         // Dùng màu đen pha chút xanh than để đồng bộ với body

@@ -1,12 +1,14 @@
 /**
- * PhimVietHay — Migration runner (001_init.sql)
+ * PhimVietHay — Migration runner (001_init.sql + 003_add_user_theme.sql)
  * ---------------------------------------------------------------
  * Chạy:  npm run migrate        (trong thư mục server/)
  *        node ../database/migrations/migrate.js   (từ thư mục server/)
  *        node database/migrations/migrate.js      (từ gốc repo)
  *
- * Chỉ chạy 001_init.sql. File 002_add_google_auth.sql KHÔNG tự chạy —
- * nó chỉ dùng khi tích hợp lại Google login (xem database/README.md).
+ * Chạy 001_init.sql rồi 003_add_user_theme.sql (thêm cột theme JSON
+ * cho bảng users — tính năng Custom UI, 23/11/2026). File
+ * 002_add_google_auth.sql KHÔNG tự chạy — nó chỉ dùng khi tích hợp
+ * lại Google login (xem database/README.md).
  *
  * Biến môi trường (đọc từ server/.env nếu có, giống database.js):
  *   DB_HOST       mặc định 'localhost'
@@ -16,9 +18,10 @@
  *   DB_NAME       mặc định 'phimviethay'
  *   DB_SSL        'true' để bật SSL (bắt buộc với TiDB Serverless)
  *
- * Hành vi: tạo database nếu chưa có -> chạy 001_init.sql (dùng
- * multipleStatements, CREATE TABLE IF NOT EXISTS nên chạy lại an toàn)
- * -> ghi nhận vào bảng schema_migrations -> kiểm tra lại 7 bảng và in báo cáo.
+ * Hành vi: tạo database nếu chưa có -> chạy lần lượt từng migration
+ * (001 rồi 003; CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS
+ * nên chạy lại an toàn) -> ghi nhận từng version vào bảng
+ * schema_migrations -> kiểm tra lại 7 bảng + cột users.theme và in báo cáo.
  */
 const fs = require('fs');
 const path = require('path');
@@ -31,8 +34,13 @@ const mysql = serverRequire('mysql2/promise');
 
 serverRequire('dotenv').config({ path: path.join(__dirname, '..', '..', 'server', '.env') });
 
-const MIGRATION_VERSION = '001_init';
-const SQL_FILE = path.join(__dirname, '001_init.sql');
+// Thứ tự chạy quan trọng: 001 tạo bảng users trước, 003 thêm cột theme
+// vào bảng đó sau. 002 KHÔNG có trong danh sách này (Google auth chưa
+// tích hợp lại — chạy tay khi cần, xem database/README.md).
+const MIGRATIONS = [
+    { version: '001_init', file: '001_init.sql' },
+    { version: '003_add_user_theme', file: '003_add_user_theme.sql' },
+];
 
 // 7 bảng mà code backend đang dùng (đối chiếu trong 001_init.sql).
 // Bảng movies đã BỎ (23/11/2026) cùng movieController — xem 001_init.sql.
@@ -64,9 +72,12 @@ async function main() {
 
     console.log(`[migrate] Kết nối MySQL ${host}:${port} (user=${user}, db=${database}, ssl=${useSsl})...`);
 
-    if (!fs.existsSync(SQL_FILE)) {
-        console.error(`[migrate] Không tìm thấy file SQL: ${SQL_FILE}`);
-        process.exit(1);
+    for (const { version, file } of MIGRATIONS) {
+        const sqlFile = path.join(__dirname, file);
+        if (!fs.existsSync(sqlFile)) {
+            console.error(`[migrate] Không tìm thấy file SQL: ${sqlFile}`);
+            process.exit(1);
+        }
     }
 
     // Kết nối chưa chọn database để có thể CREATE DATABASE nếu chưa có.
@@ -84,14 +95,16 @@ async function main() {
         await conn.query(`USE \`${database}\``);
         console.log(`[migrate] Database '${database}' đã sẵn sàng.`);
 
-        const sql = fs.readFileSync(SQL_FILE, 'utf8');
-        await conn.query(sql);
-        console.log(`[migrate] Đã chạy ${MIGRATION_VERSION}.sql`);
+        for (const { version, file } of MIGRATIONS) {
+            const sql = fs.readFileSync(path.join(__dirname, file), 'utf8');
+            await conn.query(sql);
+            console.log(`[migrate] Đã chạy ${version}.sql`);
 
-        await conn.query(
-            'INSERT IGNORE INTO `schema_migrations` (`version`) VALUES (?)',
-            [MIGRATION_VERSION]
-        );
+            await conn.query(
+                'INSERT IGNORE INTO `schema_migrations` (`version`) VALUES (?)',
+                [version]
+            );
+        }
 
         // Kiểm chứng: 7 bảng có đủ + đếm cột mỗi bảng.
         const [rows] = await conn.query(
@@ -117,7 +130,26 @@ async function main() {
             console.error('[migrate] Migration chạy nhưng thiếu bảng — kiểm tra lại 001_init.sql');
             process.exit(1);
         }
-        console.log('[migrate] XONG — đủ 7 bảng.');
+
+        // Kiểm chứng thêm: cột users.theme (003) phải tồn tại.
+        const [themeCols] = await conn.query(
+            `SELECT COLUMN_NAME AS c, DATA_TYPE AS t, IS_NULLABLE AS n
+               FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = 'theme'`,
+            [database]
+        );
+        if (themeCols.length === 1) {
+            console.log(`[migrate] ✓ users.theme (${themeCols[0].t}, nullable=${themeCols[0].n})`);
+        } else {
+            console.log('[migrate] ✗ THIẾU cột users.theme');
+            ok = false;
+        }
+
+        if (!ok) {
+            console.error('[migrate] Migration chạy nhưng thiếu bảng/cột — kiểm tra lại file SQL');
+            process.exit(1);
+        }
+        console.log('[migrate] XONG — đủ 7 bảng + cột users.theme.');
     } finally {
         await conn.end();
     }

@@ -174,6 +174,15 @@ const Header = () => {
         clearMenuTimers();
         setOpenMenu(prev => (prev === name ? null : name));
     };
+    // Fix nhanh 23/11/2026: click vào avatar chỉ MỞ dropdown user khi đang
+    // đóng, KHÔNG toggle đóng khi đang mở (user trỏ vào thì mở, nhấn theo
+    // thói quen thì click toggle làm nó mất). Đóng bằng: rời chuột (delay
+    // 200ms như hiện tại), click ra ngoài, hoặc Escape. Chỉ dùng cho
+    // dropdown user; các dropdown menu khác giữ nguyên toggleMenu.
+    const openUserMenu = () => {
+        clearMenuTimers();
+        setOpenMenu(prev => (prev === 'user' ? prev : 'user'));
+    };
     // Điều hướng bằng phím mũi tên trong menu đang mở; Escape đóng menu.
     // Không cướp phím khi đang gõ trong ô input của menu.
     const handleMenuKeyDown = (e) => {
@@ -419,7 +428,7 @@ const Header = () => {
                         </div>
                         {user ? (
                             <div className="relative cursor-pointer py-2" ref={userMenuRef} onMouseEnter={() => scheduleOpenMenu('user')} onMouseLeave={scheduleCloseMenu} onKeyDown={handleMenuKeyDown}>
-                                <button onClick={() => toggleMenu('user')} aria-expanded={openMenu === 'user'} aria-haspopup="true" className="flex items-center gap-2">
+                                <button onClick={openUserMenu} aria-expanded={openMenu === 'user'} aria-haspopup="true" className="flex items-center gap-2">
                                     <UserAvatar user={user} className="w-9 h-9 border border-white/10 hover:border-red-500 transition-colors" />
                                 </button>
                                 <div ref={el => { menuPanelRefs.current['user'] = el; }} className={`absolute top-full right-0 pt-2 w-64 z-50 transition-all duration-200 ${openMenu === 'user' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`} onMouseEnter={clearMenuTimers} onMouseLeave={scheduleCloseMenu}>

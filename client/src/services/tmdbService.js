@@ -37,7 +37,12 @@ export const getTmdbDetails = async (movie) => {
 
         // --- BƯỚC 1: TÌM BẰNG ID (ƯU TIÊN CAO NHẤT) ---
         if (movie.tmdb?.id && movie.tmdb.id !== 'null') {
-            endpoint = `/movie/${movie.tmdb.id}`;
+            // Giai đoạn 2 (6b): vsmov trả tmdb.type ('movie'/'tv') — phải
+            // dùng đúng loại, nếu không /movie/{id_tv} trả nhầm phim khác
+            // (vd: /movie/305551 là "The Unwanted", còn /tv/305551 mới là
+            // "Merry Berry Love" / "Dâu Tây Ngọt Ngào").
+            mediaType = movie.tmdb?.type === 'tv' ? 'tv' : 'movie';
+            endpoint = `/${mediaType}/${movie.tmdb.id}`;
         } 
         else if (movie.imdb?.id && movie.imdb.id !== 'null') {
              const findRes = await axios.get(`${BASE_URL}/find/${movie.imdb.id}`, {

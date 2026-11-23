@@ -17,6 +17,9 @@ router.get('/favorites/check/:slug', verifyToken, userController.checkFavorite);
 // Route cập nhật thông tin người dùng
 router.put('/profile', verifyToken, userController.updateProfile);
 
+// Route lưu theme giao diện (Custom UI) — PATCH /api/user/theme
+router.patch('/theme', verifyToken, userController.updateTheme);
+
 // Route lịch sử
 router.post('/history', verifyToken, userController.setHistory)
 router.get('/history', verifyToken, userController.getHistory);

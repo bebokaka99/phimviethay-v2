@@ -19,6 +19,8 @@ export const login = async (userData) => {
             localStorage.setItem('user', JSON.stringify(res.user));
             // Lưu key 'token' để đồng bộ với axiosConfig của bạn
             localStorage.setItem('token', res.token);
+            // Nhóm B (Custom UI): báo cho ThemeProvider đồng bộ theme tài khoản.
+            window.dispatchEvent(new Event('phimviethay:auth-changed'));
         }
         
         return res;
@@ -47,6 +49,8 @@ export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('accessToken'); // Xóa sạch các loại key
     localStorage.removeItem('refreshToken');
+    // Nhóm B (Custom UI): báo cho ThemeProvider về lại theme khách.
+    window.dispatchEvent(new Event('phimviethay:auth-changed'));
     window.location.href = '/login'; 
 };
 

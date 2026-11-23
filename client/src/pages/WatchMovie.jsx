@@ -289,7 +289,7 @@ const WatchMovie = () => {
         return null;
     };
 
-    if (loading) return <div className="min-h-screen bg-transparent flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div></div>;
+    if (loading) return <div className="min-h-screen bg-transparent flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div></div>;
     if (!movie) return null;
 
     const nextEp = getNextEpisode();
@@ -299,7 +299,7 @@ const WatchMovie = () => {
     const voteCount = movie.tmdb?.vote_count || 0;
 
     return (
-        <div className={`min-h-screen font-sans transition-colors duration-700 text-white overflow-x-hidden selection:bg-red-600 selection:text-white`}>
+        <div className={`min-h-screen font-sans transition-colors duration-700 text-white overflow-x-hidden selection:bg-[var(--accent)] selection:text-white`}>
             <Helmet>
                 <title>{pageTitle}</title>
                 <meta name="description" content={`Xem phim ${movie.name} tập ${currentEpisode?.name} chất lượng cao.`} />
@@ -317,10 +317,10 @@ const WatchMovie = () => {
 
             <div className={`relative z-50 transition-all duration-700 ${isLightOff ? 'pt-10' : 'pt-24 pb-12'} container mx-auto px-0 md:px-4`} ref={playerRef}>
                 <div className={`flex items-center gap-2 text-xs md:text-sm text-gray-400 mb-4 px-4 md:px-0 transition-opacity duration-500 ${isLightOff ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                    <Link to="/" className="hover:text-red-500 transition-colors flex items-center gap-1"><FaHome /> Trang chủ</Link>
+                    <Link to="/" className="hover:text-[var(--accent)] transition-colors flex items-center gap-1"><FaHome /> Trang chủ</Link>
                     <FaAngleRight className="text-gray-600 text-[10px]" />
-                    {movie && <><Link to={`/phim/${movie.slug}`} className="hover:text-red-500 transition-colors line-clamp-1 max-w-[120px] md:max-w-none" title={movie.name}>{movie.name}</Link><FaAngleRight className="text-gray-600 text-[10px]" /></>}
-                    <span className="text-white font-medium line-clamp-1 text-red-500">{currentEpisode?.name ? `Đang xem Tập ${currentEpisode.name}` : 'Đang tải...'}</span>
+                    {movie && <><Link to={`/phim/${movie.slug}`} className="hover:text-[var(--accent)] transition-colors line-clamp-1 max-w-[120px] md:max-w-none" title={movie.name}>{movie.name}</Link><FaAngleRight className="text-gray-600 text-[10px]" /></>}
+                    <span className="text-white font-medium line-clamp-1 text-[var(--accent)]">{currentEpisode?.name ? `Đang xem Tập ${currentEpisode.name}` : 'Đang tải...'}</span>
                 </div>
 
                 <div className={`flex flex-col lg:flex-row gap-6 ${isTheater ? 'justify-center' : ''}`}>
@@ -345,8 +345,8 @@ const WatchMovie = () => {
 
                         <div className="mt-0 md:mt-4 bg-gradient-to-r from-black/80 to-black/60 border-b md:border border-white/10 border-t-white/5 p-3 md:rounded-lg backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-red-500 font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"><FaPlay className="text-sm" /><span className="text-sm uppercase tracking-wide">Tập: <span className="text-white ml-1">{currentEpisode?.name}</span></span></div>
-                                {nextEp && <button onClick={() => handleChangeEpisode(nextEp)} className="flex items-center gap-1 text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 px-4 py-2 rounded-full transition-all shadow-md hover:shadow-red-600/30 animate-pulse-slow">Tiếp theo <FaStepForward /></button>}
+                                <div className="flex items-center gap-2 text-[var(--accent)] font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"><FaPlay className="text-sm" /><span className="text-sm uppercase tracking-wide">Tập: <span className="text-white ml-1">{currentEpisode?.name}</span></span></div>
+                                {nextEp && <button onClick={() => handleChangeEpisode(nextEp)} className="flex items-center gap-1 text-xs font-bold text-white bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] hover:from-[var(--accent-hover)] hover:to-[var(--accent)] px-4 py-2 rounded-full transition-all shadow-md hover:shadow-red-600/30 animate-pulse-slow">Tiếp theo <FaStepForward /></button>}
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={handleToggleFavorite} className={`p-2.5 rounded-full transition-all ${isFavorite ? 'text-red-500 bg-red-500/10 hover:bg-red-500/20' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`} title={isFavorite ? "Bỏ theo dõi" : "Theo dõi phim"}><FaHeart /></button>
@@ -366,11 +366,11 @@ const WatchMovie = () => {
                                     <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-red-600/10 rounded-full blur-[80px] pointer-events-none"></div>
                                     <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 mb-4">{movie.name}</h1>
                                     <div className="flex flex-wrap items-center gap-3 text-sm mb-5">
-                                        <span className="bg-gradient-to-r from-red-600 to-red-700 text-white px-3 py-1 rounded-md font-bold text-xs shadow-lg shadow-red-900/20 uppercase tracking-wider">{movie.quality || 'HD'}</span>
+                                        <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white px-3 py-1 rounded-md font-bold text-xs shadow-lg shadow-red-900/20 uppercase tracking-wider">{movie.quality || 'HD'}</span>
                                         <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-md font-bold border border-yellow-500/20"><FaStar /> {ratingVal > 0 ? ratingVal.toFixed(1) : 'N/A'} <span className="text-yellow-300/70 font-normal text-xs ml-1">({voteCount})</span></span>
-                                        <span className="flex items-center gap-1 text-gray-300 bg-white/5 px-3 py-1 rounded-md border border-white/10"><FaClock className="text-red-500" /> {movie.time}</span>
+                                        <span className="flex items-center gap-1 text-gray-300 bg-white/5 px-3 py-1 rounded-md border border-white/10"><FaClock className="text-[var(--accent)]" /> {movie.time}</span>
                                         <span className="text-gray-300 bg-white/5 px-3 py-1 rounded-md border border-white/10">{movie.year}</span>
-                                        <span className="flex items-center gap-1 text-gray-300 bg-white/5 px-3 py-1 rounded-md border border-white/10"><FaGlobe className="text-red-500" /> {movie.country?.[0]?.name}</span>
+                                        <span className="flex items-center gap-1 text-gray-300 bg-white/5 px-3 py-1 rounded-md border border-white/10"><FaGlobe className="text-[var(--accent)]" /> {movie.country?.[0]?.name}</span>
                                     </div>
                                     <h2 className="text-base text-gray-400 italic mb-5 border-b border-white/5 pb-4 font-medium">{movie.origin_name}</h2>
                                     <p className="text-gray-200 text-sm leading-relaxed line-clamp-4 md:line-clamp-none">{movie.content?.replace(/<[^>]*>?/gm, '')}</p>
@@ -392,7 +392,7 @@ const WatchMovie = () => {
                             <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden flex flex-col max-h-[500px] shadow-2xl">
                                 <div className="p-4 bg-white/5 border-b border-white/10 flex flex-col gap-3">
                                     <div className="flex justify-between items-center">
-                                        <h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wider"><FaList className="text-red-600" /> Chọn Tập</h3>
+                                        <h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wider"><FaList className="text-[var(--accent)]" /> Chọn Tập</h3>
                                         <span className="text-xs text-gray-400 bg-white/10 px-2 py-0.5 rounded-full">{displayEpisodes?.server_data?.length || 0} tập</span>
                                     </div>
                                     {/* Sap xep + tim tap */}
@@ -402,7 +402,7 @@ const WatchMovie = () => {
                                             title={epSort === 'asc' ? 'Đang xếp tăng dần 1 → N, bấm để đảo thành N → 1' : 'Đang xếp giảm dần N → 1, bấm để đảo thành 1 → N'}
                                             className="flex items-center gap-1 px-2.5 py-2 text-[11px] font-bold rounded-lg bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10 hover:text-white transition whitespace-nowrap"
                                         >
-                                            {epSort === 'asc' ? <><FaSortAmountUp className="text-red-500" /> 1 → N</> : <><FaSortAmountDown className="text-red-500" /> N → 1</>}
+                                            {epSort === 'asc' ? <><FaSortAmountUp className="text-[var(--accent)]" /> 1 → N</> : <><FaSortAmountDown className="text-[var(--accent)]" /> N → 1</>}
                                         </button>
                                         <div className="flex flex-1 gap-1">
                                             <input
@@ -412,9 +412,9 @@ const WatchMovie = () => {
                                                 onChange={(e) => { setEpQuery(e.target.value); setEpSearchMsg(''); }}
                                                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearchEpisode(); }}
                                                 placeholder="Tìm tập... (VD: 500)"
-                                                className="min-w-0 flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-red-500/60"
+                                                className="min-w-0 flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-[var(--accent)]"
                                             />
-                                            <button onClick={handleSearchEpisode} title="Nhảy tới tập" className="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition flex items-center">
+                                            <button onClick={handleSearchEpisode} title="Nhảy tới tập" className="px-3 py-2 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition flex items-center">
                                                 <FaSearch className="text-xs" />
                                             </button>
                                         </div>
@@ -423,7 +423,7 @@ const WatchMovie = () => {
                                     {episodes.length > 1 && (
                                         <div className="flex flex-wrap gap-2 p-1 bg-black/20 rounded-lg">
                                             {episodes.map((s, i) => (
-                                                <button key={i} onClick={() => setCurrentServer(i)} className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all duration-300 flex-1 ${currentServer === i ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>{s.server_name}</button>
+                                                <button key={i} onClick={() => setCurrentServer(i)} className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all duration-300 flex-1 ${currentServer === i ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white shadow-md' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>{s.server_name}</button>
                                             ))}
                                         </div>
                                     )}
@@ -442,7 +442,7 @@ const WatchMovie = () => {
                                             const isActive = currentEpisode?.slug === ep.slug;
                                             const isWatched = watchedEpisodes.includes(ep.slug);
                                             return (
-                                                <button key={`${ep.slug}-${idx}`} ref={(el) => { if (el) epBtnRefs.current[ep.slug] = el; else delete epBtnRefs.current[ep.slug]; }} onClick={() => handleChangeEpisode(ep)} className={`relative h-10 rounded-lg text-xs font-bold transition-all duration-300 border overflow-hidden group ${isActive ? 'bg-gradient-to-r from-red-600 to-red-700 text-white border-red-500/50 shadow-[0_0_15px_rgba(220,38,38,0.4)] scale-105 z-10' : isWatched ? 'bg-gray-800/50 text-gray-500 border-white/5 hover:bg-gray-700/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/30'}`}>
+                                                <button key={`${ep.slug}-${idx}`} ref={(el) => { if (el) epBtnRefs.current[ep.slug] = el; else delete epBtnRefs.current[ep.slug]; }} onClick={() => handleChangeEpisode(ep)} className={`relative h-10 rounded-lg text-xs font-bold transition-all duration-300 border overflow-hidden group ${isActive ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white border-[var(--accent)] shadow-[0_0_15px_rgba(220,38,38,0.4)] scale-105 z-10' : isWatched ? 'bg-gray-800/50 text-gray-500 border-white/5 hover:bg-gray-700/50' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/30'}`}>
                                                     {isActive && <span className="absolute inset-0 bg-white/20 animate-pulse-slow mix-blend-overlay"></span>}
                                                     {ep.name}
                                                 </button>
@@ -532,12 +532,12 @@ const WatchMovie = () => {
 
                             {casts.length > 0 && (
                                 <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-                                    <div className="p-4 bg-white/5 border-b border-white/10"><h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wider"><FaUsers className="text-red-600" /> Diễn viên</h3></div>
+                                    <div className="p-4 bg-white/5 border-b border-white/10"><h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wider"><FaUsers className="text-[var(--accent)]" /> Diễn viên</h3></div>
                                     <div className="p-3 max-h-[350px] overflow-y-auto custom-scrollbar bg-black/20">
                                         <div className="grid grid-cols-2 gap-3">
                                             {casts.map((actor, idx) => (
                                                 <div key={idx} className="flex items-center gap-3 group cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-all border border-transparent hover:border-white/10">
-                                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-red-500/50 transition-all flex-shrink-0 bg-gray-800 shadow-sm">
+                                                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-[var(--accent)] transition-all flex-shrink-0 bg-gray-800 shadow-sm">
                                                         {actor.profile_path ? <img src={getActorImg(actor.profile_path)} alt={actor.name} className="w-full h-full object-cover filter group-hover:brightness-110 transition-all" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold">{actor.name.charAt(0)}</div>}
                                                     </div>
                                                     <div className="min-w-0"><p className="text-xs font-bold text-gray-200 truncate group-hover:text-red-400 transition-colors">{actor.name}</p><p className="text-[10px] text-gray-500 truncate">{actor.character || 'Diễn viên'}</p></div>

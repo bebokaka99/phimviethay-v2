@@ -107,7 +107,7 @@ const Register = () => {
                         <input type="password" placeholder="Nhập lại mật khẩu" required className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[#1a1a1a]/80 text-white border border-white/10 focus:border-phim-accent focus:ring-2 focus:ring-phim-accent/30 transition-all outline-none placeholder-gray-500" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}/>
                     </div>
 
-                    <button disabled={loading} className="w-full py-3.5 rounded-xl bg-phim-accent text-white font-bold text-lg hover:bg-red-700 transition-all transform active:scale-95 shadow-lg shadow-red-900/30 mt-4 disabled:opacity-70 disabled:cursor-not-allowed">
+                    <button disabled={loading} className="w-full py-3.5 rounded-xl bg-phim-accent text-white font-bold text-lg hover:bg-[var(--accent-hover)] transition-all transform active:scale-95 shadow-lg shadow-red-900/30 mt-4 disabled:opacity-70 disabled:cursor-not-allowed">
                         {loading ? 'Đang xử lý...' : 'Đăng Ký Ngay'}
                     </button>
                 </form>

@@ -12,7 +12,8 @@ database/
 └── migrations/
     ├── 001_init.sql           Tạo toàn bộ database (7 bảng)
     ├── 002_add_google_auth.sql Khôi phục Google auth (CHƯA áp dụng — xem dưới)
-    └── migrate.js             Script chạy migration 001
+    ├── 003_add_user_theme.sql Thêm cột users.theme (JSON) — Custom UI
+    └── migrate.js             Script chạy migration 001 + 003
 ```
 
 ## Chạy migration
@@ -30,9 +31,24 @@ Hoặc từ gốc repo:
 node database/migrations/migrate.js
 ```
 
-Script sẽ: tạo database nếu chưa có → chạy `001_init.sql` →
-ghi nhận vào bảng `schema_migrations` → kiểm tra lại đủ 7 bảng rồi in báo cáo.
-Chạy lại nhiều lần an toàn (mọi câu đều `CREATE TABLE IF NOT EXISTS`).
+Script sẽ: tạo database nếu chưa có → chạy `001_init.sql` rồi
+`003_add_user_theme.sql` → ghi nhận vào bảng `schema_migrations` →
+kiểm tra lại đủ 7 bảng + cột `users.theme` rồi in báo cáo.
+Chạy lại nhiều lần an toàn (mọi câu đều `CREATE TABLE IF NOT EXISTS` /
+`ADD COLUMN IF NOT EXISTS`).
+
+## Theme giao diện — migration 003 (Custom UI, 23/11/2026)
+
+Cột `users.theme` (JSON, NULL) lưu toàn bộ cài đặt giao diện của user,
+vd `{"preset":"ocean","accent":"#3b82f6","radius":"medium",
+"fontSize":"medium","density":"comfortable","hiddenRows":[],
+"animations":true,"glass":true}`. NULL = chưa lưu theme, dùng mặc định.
+API: `GET /api/auth/me` trả thêm `theme`; `PATCH /api/user/theme`
+(JWT, chỉ sửa theme của chính mình) lưu theme — validate ở
+`server/src/utils/themeValidation.js` (chỉ key đã biết, preset trong
+danh sách tối, accent phải là hex). MariaDB lưu JSON dạng LONGTEXT
+nên backend tự parse/stringify (`server/src/models/User.js`); chuỗi
+JSON hỏng trong DB trả về `null`, không crash.
 
 > Bảng `movies` đã bỏ (23/11/2026) cùng `movieController` — code chết cả
 > 2 phía, frontend gọi thẳng vsmov. File 001 gốc còn bảng này được lưu tại
@@ -107,7 +123,7 @@ Khi muốn tích hợp lại Google:
 ## Lưu ý
 
 - Muốn đổi schema sau này thì thêm file `003_*.sql` + cập nhật `migrate.js`
-  (hiện chỉ chạy `001_init.sql`).
+  (hiện chạy `001_init.sql` + `003_add_user_theme.sql`; 002 vẫn chạy tay).
 - Xóa user sẽ xóa theo (CASCADE) favorites/history/comments/likes của user đó.
 - 2 bug đã sửa ngày 23/11/2026 (rebuild backend): `User.delete` đã được thêm
   vào model (admin xóa user hết lỗi 500); `database.js` chỉ bật SSL khi

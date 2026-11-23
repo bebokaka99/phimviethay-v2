@@ -72,7 +72,9 @@ exports.login = async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        // Trả về info
+        // Trả về info (theme đã parse trong User.findByCredentials:
+        // object hoặc null — frontend dùng để áp theme ngay sau login,
+        // không cần gọi thêm /me).
         res.json({
             token,
             user: {
@@ -81,7 +83,8 @@ exports.login = async (req, res) => {
                 fullname: user.fullname,
                 email: user.email,
                 avatar: user.avatar,
-                role: user.role
+                role: user.role,
+                theme: user.theme ?? null
             }
         });
     } catch (error) {
@@ -106,7 +109,10 @@ exports.getMe = async (req, res) => {
             fullname: user.fullname,
             email: user.email,
             avatar: user.avatar,
-            role: user.role
+            role: user.role,
+            // Theme đã parse trong User.findById: object hoặc null
+            // (null = chưa lưu theme, dùng mặc định).
+            theme: user.theme ?? null
         });
     } catch (error) {
         console.error("GetMe Error:", error);

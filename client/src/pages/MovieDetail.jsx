@@ -66,8 +66,8 @@ const Toast = ({ message, onClose }) => {
     }, [onClose]);
 
     return (
-        <div className="fixed top-20 right-4 z-[200] bg-black/80 backdrop-blur-md border-l-4 border-red-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in-down max-w-[90vw]">
-            <div className="bg-red-600 p-1.5 rounded-full"><FaHeart className="text-white text-xs" /></div>
+        <div className="fixed top-20 right-4 z-[200] bg-black/80 backdrop-blur-md border-l-4 border-[var(--accent)] text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in-down max-w-[90vw]">
+            <div className="bg-[var(--accent)] p-1.5 rounded-full"><FaHeart className="text-white text-xs" /></div>
             <span className="text-sm font-bold">{message}</span>
         </div>
     );
@@ -287,7 +287,7 @@ const MovieDetail = () => {
                         <div className="rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/10 transform transition-transform duration-500 hover:rotate-y-6 hover:scale-105 bg-black/20 backdrop-blur-sm">
                             <img src={posterImg} alt={movie.name} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 md:hidden transition-opacity cursor-pointer" onClick={handleWatchNow}>
-                                <FaPlayCircle className="text-6xl text-red-600 drop-shadow-lg" />
+                                <FaPlayCircle className="text-6xl text-[var(--accent)] drop-shadow-lg" />
                             </div>
                         </div>
                     </div>
@@ -296,7 +296,7 @@ const MovieDetail = () => {
                     <div className="flex-1 w-full space-y-6 text-center md:text-left">
                         <div>
                             <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
-                                <span className="px-2.5 py-1 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-red-900/50">{movie.quality || 'HD'}</span>
+                                <span className="px-2.5 py-1 rounded bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-red-900/50">{movie.quality || 'HD'}</span>
                                 <span className="px-2.5 py-1 rounded border border-white/20 bg-white/5 text-gray-300 text-[10px] font-bold uppercase">{movie.lang}</span>
                             </div>
                             <h1 className="text-4xl md:text-6xl font-black leading-none tracking-tight text-white drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-400">
@@ -310,7 +310,7 @@ const MovieDetail = () => {
                                 <FaStar /> <span className="text-white">{displayRating}</span> <span className="text-xs font-normal opacity-70">{displayVotes}</span>
                             </div>
                             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-                                <FaClock className="text-red-500" /> <span>{movie.time}</span>
+                                <FaClock className="text-[var(--accent)]" /> <span>{movie.time}</span>
                             </div>
                             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                                 <FaGlobe className="text-blue-500" /> <span>{movie.country?.[0]?.name}</span>
@@ -329,7 +329,7 @@ const MovieDetail = () => {
                         {/* DESCRIPTION */}
                         <div className="bg-white/5 backdrop-blur-md rounded-2xl p-5 border border-white/5 text-gray-300 leading-relaxed text-sm md:text-base text-justify shadow-inner">
                             <p className={isExpanded ? '' : 'line-clamp-4'}>{movieContentClean}</p>
-                            <button onClick={() => setIsExpanded(!isExpanded)} className="text-red-500 font-bold mt-2 hover:text-red-400 text-xs flex items-center gap-1 ml-auto">
+                            <button onClick={() => setIsExpanded(!isExpanded)} className="text-[var(--accent)] font-bold mt-2 hover:opacity-80 text-xs flex items-center gap-1 ml-auto">
                                 {isExpanded ? 'Thu gọn' : 'Đọc tiếp'} <FaChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </button>
                         </div>
@@ -338,7 +338,7 @@ const MovieDetail = () => {
                         <div className="flex flex-wrap justify-center md:justify-start gap-3">
                             <button 
                                 onClick={handleWatchNow} 
-                                className="flex-1 md:flex-none bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-8 py-3.5 rounded-full font-bold text-base flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0"
+                                className="flex-1 md:flex-none bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] hover:from-[var(--accent-hover)] hover:to-[var(--accent)] text-white px-8 py-3.5 rounded-full font-bold text-base flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 {continueEp ? <><FaHistory /> Xem Tiếp {continueEp.name}</> : <><FaPlay /> Xem Ngay</>}
                             </button>
@@ -364,13 +364,13 @@ const MovieDetail = () => {
                 {/* CASTS */}
                 {displayCasts.length > 0 && (
                     <div className="mt-16 relative">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><span className="w-1 h-6 bg-red-600 rounded-full"></span> Diễn viên nổi bật</h3>
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white"><span className="w-1 h-6 bg-[var(--accent)] rounded-full"></span> Diễn viên nổi bật</h3>
                         <div className="relative group/list">
-                            <button onClick={() => scrollCast(castRef, 'left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover/list:opacity-100 hover:bg-red-600 transition -ml-5 backdrop-blur-sm"><FaChevronLeft /></button>
+                            <button onClick={() => scrollCast(castRef, 'left')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover/list:opacity-100 hover:bg-[var(--accent)] transition -ml-5 backdrop-blur-sm"><FaChevronLeft /></button>
                             <div ref={castRef} className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x scroll-smooth">
                                 {displayCasts.map((person, idx) => (
                                     <div key={idx} className="flex-shrink-0 w-[100px] md:w-[120px] snap-start flex flex-col items-center group/actor">
-                                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-white/5 group-hover/actor:border-red-500 transition-all duration-300 shadow-lg bg-[#1a1a1a]">
+                                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-white/5 group-hover/actor:border-[var(--accent)] transition-all duration-300 shadow-lg bg-[#1a1a1a]">
                                             {person.avatar ? (
                                                 <img src={person.avatar} alt={person.name} className="w-full h-full object-cover" loading="lazy"/>
                                             ) : (
@@ -382,7 +382,7 @@ const MovieDetail = () => {
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => scrollCast(castRef, 'right')} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover/list:opacity-100 hover:bg-red-600 transition -mr-5 backdrop-blur-sm"><FaChevronRight /></button>
+                            <button onClick={() => scrollCast(castRef, 'right')} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 p-3 rounded-full text-white opacity-0 group-hover/list:opacity-100 hover:bg-[var(--accent)] transition -mr-5 backdrop-blur-sm"><FaChevronRight /></button>
                         </div>
                     </div>
                 )}
@@ -390,7 +390,7 @@ const MovieDetail = () => {
                 {/* EPISODES */}
                 <div id="episodes-section" className="mt-12 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl">
                     <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-white border-b border-white/10 pb-4">
-                        <FaListIcon className="text-red-500" /> Danh sách tập phim
+                        <FaListIcon className="text-[var(--accent)]" /> Danh sách tập phim
                     </h3>
                     
                     {episodes.length > 0 ? (
@@ -407,7 +407,7 @@ const MovieDetail = () => {
                                     {visibleEps.map((ep) => (
                                         <button 
                                             key={ep.slug} 
-                                            className="bg-[#1a1a1a] hover:bg-red-600 text-gray-300 hover:text-white py-2 px-2 rounded-lg font-medium text-xs transition-all border border-white/5 hover:border-red-500 shadow-sm truncate active:scale-95" 
+                                            className="bg-[#1a1a1a] hover:bg-[var(--accent)] text-gray-300 hover:text-white py-2 px-2 rounded-lg font-medium text-xs transition-all border border-white/5 hover:border-[var(--accent)] shadow-sm truncate active:scale-95" 
                                             onClick={() => navigate(`/xem-phim/${movie.slug}?tap=${ep.slug}`)}
                                         >
                                             {ep.name}

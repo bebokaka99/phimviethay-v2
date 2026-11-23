@@ -21,7 +21,7 @@ const SessionExpiredModal = ({ isOpen, onConfirm }) => {
 
                 <button 
                     onClick={onConfirm}
-                    className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
                 >
                     <FaSignOutAlt />
                     Đăng nhập lại ngay

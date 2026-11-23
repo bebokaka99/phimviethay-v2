@@ -2,46 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- 1. TÙY CHỈNH SCROLLBAR (MÀU ĐỎ) --- */
+/* ==================================================================
+   NHÓM B — CUSTOM UI (23/11/2026): CSS VARIABLES CỦA THEME
+   ThemeContext (client/src/context/ThemeContext.jsx) set các biến này
+   lên documentElement mỗi khi theme đổi (live preview). Giá trị dưới
+   đây là mặc định preset crimson (đỏ #e50914, nền #0a0e17) — chỉ dùng
+   trước khi JS chạy; sau đó ThemeContext ghi đè.
+   Các nhóm khác dùng đúng tên biến này, KHÔNG tự đặt tên mới.
+   ================================================================== */
+:root {
+  --accent: #e50914;
+  --accent-hover: #b00710;
+  --accent-rgb: 229, 9, 20;
+  --bg: #0a0e17;
+  --surface: #141a26;
+  --text: #ffffff;
+  --text-muted: #9ca3af;
+  --border: rgba(255, 255, 255, 0.12);
+  --text-on-accent: #ffffff;
+  --card-radius: 12px;
+  --font-size-base: 16px;
+  --card-gap: 16px;
+}
+
+/* Helper class cho các nhóm C/D (và chỗ nào cần accent mà không tiện
+   viết arbitrary value): .bg-accent / .text-accent / .border-accent. */
+.bg-accent { background-color: var(--accent); }
+.text-accent { color: var(--accent); }
+.border-accent { border-color: var(--accent); }
+.btn-accent {
+  background-color: var(--accent);
+  color: var(--text-on-accent);
+}
+.btn-accent:hover { background-color: var(--accent-hover); }
+
+/* Mật độ (nhóm D dùng --card-gap cho khoảng cách giữa các card). */
+.theme-gap { gap: var(--card-gap); }
+
+/* Tắt hiệu ứng theo lựa chọn của user (data-animations="off").
+   Chỉ áp khi user tự tắt — KHÔNG dùng prefers-reduced-motion kill-switch
+   toàn cục (đã gỡ 23/11/2026, xem ghi chú cuối file). */
+[data-animations="off"] *,
+[data-animations="off"] *::before,
+[data-animations="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Tắt hiệu ứng kính (glass) theo lựa chọn của user. */
+[data-glass="off"] .backdrop-blur,
+[data-glass="off"] .backdrop-blur-sm,
+[data-glass="off"] .backdrop-blur-md,
+[data-glass="off"] .backdrop-blur-lg,
+[data-glass="off"] .backdrop-blur-xl,
+[data-glass="off"] .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* --- 1. TÙY CHỈNH SCROLLBAR (MÀU ACCENT CỦA THEME) --- */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a0505;
-  /* Nền rãnh cuộn màu đỏ đen */
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #7f1d1d;
-  /* Thanh cuộn màu đỏ đậm */
+  background: color-mix(in srgb, var(--accent) 55%, #000000);
   border-radius: 4px;
-  border: 1px solid #450a0a;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, #000000);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #dc2626;
-  /* Hover sáng rực */
+  background: var(--accent);
 }
 
-/* --- 2. NỀN TỔNG THỂ (RED CINEMA GRADIENT) --- */
+/* --- 2. NỀN TỔNG THỂ (GRADIENT THEO ACCENT CỦA THEME) --- */
 body {
   margin: 0;
   padding: 0;
-  color: #fff1f2;
-  /* Chữ màu trắng hơi phớt hồng nhẹ cho hợp nền */
+  color: var(--text);
+  font-size: var(--font-size-base);
 
-  /* MÀU NỀN CHÍNH: Đen pha đỏ */
-  background-color: #0f0202;
+  /* MÀU NỀN CHÍNH: theo theme (preset crimson mặc định: #0a0e17).
+     Ánh sáng trên cùng + chuyển nền đều pha theo màu accent nên đổi
+     preset là cả nền site đổi theo, chữ vẫn đọc được nhờ auto-contrast. */
+  background-color: var(--bg);
 
-  /* HIỆU ỨNG GRADIENT: SÁNG -> TỐI */
   background-image:
-    /* Lớp 1: Ánh sáng đỏ rực ở trên cùng (Sáng) */
-    linear-gradient(to bottom, rgba(185, 28, 28, 0.15) 0%, transparent 40%),
+    /* Lớp 1: Ánh sáng accent ở trên cùng (Sáng) */
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 15%, transparent) 0%, transparent 40%),
 
-    /* Lớp 2: Chuyển màu từ Đỏ Thẫm -> Đen (Chính) */
-    linear-gradient(180deg, #280505 0%, #0a0000 100%);
+    /* Lớp 2: Chuyển màu từ accent thẫm -> nền theme (Chính) */
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, var(--bg)) 0%, var(--bg) 100%);
 
   /* Cố định nền để khi cuộn nội dung trôi qua rất đẹp */
   background-attachment: fixed;

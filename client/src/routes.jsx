@@ -35,8 +35,8 @@ const Intros = lazy(() => import("./pages/admin/Intros"));
 
 // 1. Loading Component khi chuyển trang
 const LoadingFallback = () => (
-  <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center">
-    <FaSpinner className="animate-spin text-4xl text-red-600" />
+  <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
+    <FaSpinner className="animate-spin text-4xl text-[var(--accent)]" />
   </div>
 );
 
@@ -81,7 +81,6 @@ export const router = createBrowserRouter([
       { path: "/the-loai/:slug", element: <Suspense fallback={<LoadingFallback />}><Catalog group="the-loai" /></Suspense> },
       { path: "/quoc-gia/:slug", element: <Suspense fallback={<LoadingFallback />}><Catalog group="quoc-gia" /></Suspense> },
       { path: "/danh-sach/:slug", element: <Suspense fallback={<LoadingFallback />}><Catalog group="danh-sach" /></Suspense> },
-      { path: "/nam-phat-hanh/:slug", element: <Suspense fallback={<LoadingFallback />}><Catalog group="nam-phat-hanh" /></Suspense> },
 
       // Các trang không có slug (fallback về danh sách)
       { path: "/the-loai", element: <Suspense fallback={<LoadingFallback />}><Catalog group="danh-sach" /></Suspense> },

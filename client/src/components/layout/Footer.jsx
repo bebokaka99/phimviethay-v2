@@ -24,25 +24,25 @@ const Footer = () => {
                     <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all duration-300 group"><FaFacebook className="group-hover:scale-110 transition"/></a>
                     <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-sky-500 hover:text-white transition-all duration-300 group"><FaTwitter className="group-hover:scale-110 transition"/></a>
                     <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-pink-600 hover:text-white transition-all duration-300 group"><FaInstagram className="group-hover:scale-110 transition"/></a>
-                    <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all duration-300 group"><FaYoutube className="group-hover:scale-110 transition"/></a>
+                    <a href="#" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-[var(--accent)] hover:text-white transition-all duration-300 group"><FaYoutube className="group-hover:scale-110 transition"/></a>
                 </div>
             </div>
 
             {/* Cột 2: Khám phá */}
             <div>
-                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-red-600">Khám phá</h3>
+                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Khám phá</h3>
                 <ul className="space-y-3 text-xs font-medium">
-                    <li><a href="/danh-sach/phim-moi" className="hover:text-red-500 transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-red-500 transition-colors"></span> Phim chiếu rạp mới</a></li>
-                    <li><a href="/danh-sach/phim-bo" className="hover:text-red-500 transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-red-500 transition-colors"></span> Phim bộ độc quyền</a></li>
-                    <li><a href="/danh-sach/phim-le" className="hover:text-red-500 transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-red-500 transition-colors"></span> Phim lẻ hành động</a></li>
-                    <li><a href="/danh-sach/tv-shows" className="hover:text-red-500 transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-red-500 transition-colors"></span> TV Shows hấp dẫn</a></li>
-                    <li><a href="/danh-sach/hoat-hinh" className="hover:text-red-500 transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-red-500 transition-colors"></span> Anime & Hoạt hình</a></li>
+                    <li><a href="/danh-sach/phim-moi" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim chiếu rạp mới</a></li>
+                    <li><a href="/danh-sach/phim-bo" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim bộ độc quyền</a></li>
+                    <li><a href="/danh-sach/phim-le" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim lẻ hành động</a></li>
+                    <li><a href="/danh-sach/tv-shows" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> TV Shows hấp dẫn</a></li>
+                    <li><a href="/danh-sach/hoat-hinh" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Anime & Hoạt hình</a></li>
                 </ul>
             </div>
 
             {/* Cột 3: Hỗ trợ */}
             <div>
-                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-red-600">Hỗ trợ</h3>
+                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Hỗ trợ</h3>
                 <ul className="space-y-3 text-xs font-medium">
                     <li><a href="#" className="hover:text-white transition-colors">Điều khoản sử dụng</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a></li>
@@ -54,10 +54,10 @@ const Footer = () => {
 
             {/* Cột 4: Trending Tags */}
             <div>
-                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-red-600">Từ khóa hot</h3>
+                <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Từ khóa hot</h3>
                 <div className="flex flex-wrap gap-2">
                     {['Hành động', 'Marvel', 'Hàn Quốc', 'Anime', 'Kinh dị', 'Netflix', 'Hài hước', 'Tình cảm', 'Học đường', 'DC'].map(tag => (
-                        <span key={tag} className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 hover:text-white hover:bg-red-600 hover:border-red-600 cursor-pointer transition-all duration-300">
+                        <span key={tag} className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 hover:text-white hover:bg-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-all duration-300">
                             #{tag}
                         </span>
                     ))}

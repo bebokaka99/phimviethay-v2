@@ -44,7 +44,7 @@ const getHeaderIcon = (title) => {
     if (t.includes('mới') || t.includes('new')) return <FaBolt className="text-blue-400" />;
     if (t.includes('hot') || t.includes('nổi bật')) return <FaStar className="text-yellow-500" />;
     if (t.includes('bộ') || t.includes('series')) return <FaTv className="text-purple-500" />;
-    return <FaFilm className="text-red-600" />;
+    return <FaFilm className="text-[var(--accent)]" />;
 };
 
 // Filter Pill
@@ -53,7 +53,7 @@ const FilterPill = ({ label, active, onClick }) => (
         onClick={onClick} 
         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 border flex items-center justify-center gap-2 whitespace-nowrap active:scale-95
         ${active 
-            ? 'bg-red-600 text-white border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]' 
+            ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_0_15px_rgba(var(--accent-rgb),0.4)]' 
             : 'bg-transparent text-gray-400 border-transparent hover:bg-white/5 hover:text-white hover:border-white/10'}`}
     >
         {label}
@@ -100,7 +100,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
     return (
         <div className="flex justify-center items-center gap-2 mt-16 pb-10">
-            <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed"><FaChevronLeft size={10}/></button>
+            <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 text-gray-400 hover:bg-[var(--accent)] hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed"><FaChevronLeft size={10}/></button>
             {pages.map((p, i) => (
                 <button 
                     key={i} 
@@ -108,7 +108,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                     disabled={typeof p !== 'number'}
                     className={`w-9 h-9 rounded-lg text-sm font-bold flex items-center justify-center transition-all
                     ${p === currentPage 
-                        ? 'bg-red-600 text-white shadow-lg shadow-red-900/40' 
+                        ? 'bg-[var(--accent)] text-white shadow-lg shadow-red-900/40' 
                         : typeof p === 'number' 
                             ? 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white' 
                             : 'text-gray-600 bg-transparent cursor-default'}`}
@@ -116,7 +116,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                     {p}
                 </button>
             ))}
-            <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed"><FaChevronRight size={10}/></button>
+            <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/5 text-gray-400 hover:bg-[var(--accent)] hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed"><FaChevronRight size={10}/></button>
         </div>
     );
 };
@@ -357,8 +357,8 @@ const Catalog = ({ group }) => {
                     <div className="relative z-10 w-full md:w-auto">
                         {/* Tagline */}
                         <div className="flex items-center gap-2 mb-2 animate-fade-in">
-                            <div className="h-[2px] w-8 bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
-                            <span className="text-xs md:text-sm font-bold text-red-500 uppercase tracking-[0.2em] drop-shadow-sm">Khám phá vũ trụ phim</span>
+                            <div className="h-[2px] w-8 bg-[var(--accent)] shadow-[0_0_10px_rgba(var(--accent-rgb),0.8)]"></div>
+                            <span className="text-xs md:text-sm font-bold text-[var(--accent)] uppercase tracking-[0.2em] drop-shadow-sm">Khám phá vũ trụ phim</span>
                         </div>
 
                         {/* Massive Title with Icon Box */}
@@ -382,7 +382,7 @@ const Catalog = ({ group }) => {
                         onClick={() => setShowFilter(!showFilter)} 
                         className={`w-full md:w-auto group flex items-center justify-center gap-3 px-7 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl backdrop-blur-md border animate-fade-in delay-200
                         ${showFilter 
-                            ? 'bg-red-600 text-white border-red-500 ring-4 ring-red-500/20 scale-105' 
+                            ? 'bg-[var(--accent)] text-white border-[var(--accent)] ring-4 ring-[var(--accent)] scale-105' 
                             : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/30 hover:-translate-y-1'}`}
                     >
                         <FaFilter className={`text-sm transition-transform duration-300 ${showFilter ? 'rotate-180' : ''}`} /> 
@@ -396,7 +396,7 @@ const Catalog = ({ group }) => {
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-2">Đang lọc:</span>
                         {activeTags.map((tag, idx) => (
                             <div key={idx} className="bg-white/5 border border-white/10 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm text-gray-300 hover:border-white/30 transition-colors">
-                                <FaTags className="text-red-500 text-[10px]" /> {tag.label}
+                                <FaTags className="text-[var(--accent)] text-[10px]" /> {tag.label}
                             </div>
                         ))}
                         <button onClick={handleClearFilter} className="text-xs text-red-500 font-bold hover:text-red-400 ml-2 hover:underline flex items-center gap-1"><FaTrashAlt/> Xóa tất cả</button>
@@ -425,7 +425,7 @@ const Catalog = ({ group }) => {
 
                         <div className="mt-10 flex flex-col md:flex-row justify-end gap-4 border-t border-white/5 pt-8 relative z-10">
                             <button onClick={handleClearFilter} className="px-8 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition flex items-center justify-center gap-2 text-sm w-full md:w-auto"><FaTrashAlt /> Đặt lại</button>
-                            <button onClick={handleApplyFilter} className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-10 py-3 rounded-xl font-bold shadow-xl shadow-red-900/30 transition flex items-center justify-center gap-2 text-sm transform hover:-translate-y-1 w-full md:w-auto"><FaCheck /> Áp dụng bộ lọc</button>
+                            <button onClick={handleApplyFilter} className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] hover:from-[var(--accent-hover)] hover:to-[var(--accent)] text-white px-10 py-3 rounded-xl font-bold shadow-xl shadow-red-900/30 transition flex items-center justify-center gap-2 text-sm transform hover:-translate-y-1 w-full md:w-auto"><FaCheck /> Áp dụng bộ lọc</button>
                         </div>
                     </div>
                 </div>

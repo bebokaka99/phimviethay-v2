@@ -2,12 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FaUserCircle, FaSave, FaSignOutAlt, FaCamera, FaLock, FaIdCard, FaHeart, FaCloudUploadAlt, FaCheckCircle, FaExclamationCircle, FaImage, FaPen, FaTimes } from 'react-icons/fa';
+import { FaUserCircle, FaSave, FaSignOutAlt, FaCamera, FaLock, FaIdCard, FaHeart, FaCloudUploadAlt, FaCheckCircle, FaExclamationCircle, FaImage, FaPen, FaTimes, FaPalette, FaUndo, FaCheck } from 'react-icons/fa';
 
 import MovieCard from '../components/movies/MovieCard';
 import UserAvatar from '../components/common/UserAvatar';
 import { getFavorites, getCurrentUser, updateProfile, logout, toggleFavorite } from '../services/authService';
 import { getRoleLabel } from '../utils/roleLabel';
+import { HOME_ROWS } from '../config/menuRows';
+import { useTheme } from '../context/ThemeContext';
 
 const CLOUD_NAME = 'dffwgj4x3';
 const UPLOAD_PRESET = 'phimviethay_preset';
@@ -41,6 +43,213 @@ const Toast = ({ type, message, onClose }) => {
     );
 };
 
+// ---- Cá nhân hóa giao diện (Nhóm C) ----
+// Dùng đúng hợp đồng ThemeContext của nhóm B: useTheme() -> { theme,
+// setTheme, resetTheme, presets }. Mọi thay đổi áp ngay (live preview)
+// + tự lưu qua setTheme — KHÔNG có nút "Lưu" riêng (trừ "Dùng màu này"
+// của custom accent và "Đặt lại mặc định").
+const FALLBACK_PRESETS = [
+    { id: 'crimson', name: 'Đỏ Đô', accent: '#dc2626', background: '#0a0e17', surface: '#111827', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+    { id: 'ocean', name: 'Đại Dương', accent: '#3b82f6', background: '#081120', surface: '#0f1f38', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+    { id: 'violet', name: 'Tím Mộng', accent: '#8b5cf6', background: '#100a1e', surface: '#1d1338', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+    { id: 'emerald', name: 'Ngọc Lục', accent: '#10b981', background: '#07130f', surface: '#0d2118', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+    { id: 'amber', name: 'Hổ Phách', accent: '#f59e0b', background: '#171006', surface: '#241a08', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+    { id: 'rose', name: 'Hồng Đào', accent: '#f43f5e', background: '#180a10', surface: '#26101a', text: '#ffffff', textMuted: '#9ca3af', border: 'rgba(255,255,255,0.1)' },
+];
+
+const RADIUS_OPTIONS = [
+    { id: 'round', label: 'Tròn nhiều' },
+    { id: 'medium', label: 'Vừa' },
+    { id: 'square', label: 'Vuông' },
+];
+const FONT_SIZE_OPTIONS = [
+    { id: 'small', label: 'Nhỏ' },
+    { id: 'medium', label: 'Vừa' },
+    { id: 'large', label: 'Lớn' },
+];
+const DENSITY_OPTIONS = [
+    { id: 'compact', label: 'Gọn' },
+    { id: 'comfortable', label: 'Thoải mái' },
+];
+
+// Nhóm nút lựa chọn dùng chung (bo góc / cỡ chữ / mật độ).
+const OptionGroup = ({ label, options, value, onChange, accent }) => (
+    <div>
+        <p className="text-xs font-bold text-gray-500 uppercase mb-3">{label}</p>
+        <div className="flex flex-wrap gap-2">
+            {options.map((opt) => {
+                const selected = value === opt.id;
+                return (
+                    <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => onChange(opt.id)}
+                        aria-pressed={selected}
+                        className={`px-4 py-2.5 rounded-xl font-bold text-sm transition border ${selected ? 'text-white shadow-lg' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white'}`}
+                        style={selected ? { backgroundColor: accent, borderColor: accent } : undefined}
+                    >
+                        {opt.label}
+                    </button>
+                );
+            })}
+        </div>
+    </div>
+);
+
+// Công tắc bật/tắt dùng chung (hiệu ứng).
+const ToggleRow = ({ label, desc, checked, onChange, accent }) => (
+    <div className="flex items-center justify-between gap-4 py-3">
+        <div>
+            <p className="font-bold text-sm text-white">{label}</p>
+            {desc && <p className="text-xs text-gray-500 mt-0.5">{desc}</p>}
+        </div>
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            aria-label={label}
+            onClick={() => onChange(!checked)}
+            className="relative shrink-0 w-12 h-6 rounded-full transition-colors"
+            style={{ backgroundColor: checked ? accent : 'rgba(255,255,255,0.2)' }}
+        >
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${checked ? 'left-[26px]' : 'left-0.5'}`} />
+        </button>
+    </div>
+);
+
+// Mục "Giao diện" — render ở cả 2 chỗ: tab trong modal Cài đặt tài khoản
+// và section dưới Tủ phim trên trang Hồ sơ (cùng 1 component, cùng state).
+const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset }) => {
+    const list = presets && presets.length > 0 ? presets : FALLBACK_PRESETS;
+    const accent = theme?.accent || '#dc2626';
+    const hiddenRows = theme?.hiddenRows || [];
+    const [customAccent, setCustomAccent] = useState(theme?.accent || '#dc2626');
+
+    // Khi user bấm preset khác ở ngoài (hoặc reset), đồng bộ lại ô chọn màu.
+    useEffect(() => { setCustomAccent(theme?.accent || '#dc2626'); }, [theme?.preset]);
+
+    const toggleRow = (slug) => {
+        const next = hiddenRows.includes(slug)
+            ? hiddenRows.filter((s) => s !== slug)
+            : [...hiddenRows, slug];
+        setTheme({ hiddenRows: next });
+    };
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            <div>
+                <h2 className="text-2xl font-bold text-white mb-1">Giao diện</h2>
+                <p className="text-xs text-gray-500">Mọi thay đổi áp dụng ngay lên toàn trang và tự lưu theo tài khoản của bạn.</p>
+            </div>
+
+            {/* (a) 6 preset màu */}
+            <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3">Bộ màu có sẵn</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {list.map((p) => {
+                        const selected = theme?.preset === p.id;
+                        return (
+                            <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => { setTheme({ preset: p.id }); setCustomAccent(p.accent); }}
+                                aria-pressed={selected}
+                                className={`relative text-left rounded-xl overflow-hidden border-2 transition transform hover:scale-[1.02] ${selected ? 'shadow-lg' : 'border-transparent hover:border-white/30'}`}
+                                style={selected ? { borderColor: p.accent, boxShadow: `0 0 20px ${p.accent}55` } : undefined}
+                            >
+                                <div className="h-12 flex items-end p-2" style={{ backgroundColor: p.background }}>
+                                    <div className="w-full h-2 rounded-full" style={{ backgroundColor: p.accent }} />
+                                </div>
+                                <div className="px-3 py-2 bg-black/40 flex items-center justify-between gap-2">
+                                    <span className="text-sm font-bold text-white truncate">{p.name}</span>
+                                    {selected && <FaCheck className="shrink-0 text-xs" style={{ color: p.accent }} />}
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* (b) Custom accent */}
+            <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3">Màu nhấn của riêng bạn</p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <label className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 cursor-pointer shrink-0" title="Chọn màu nhấn">
+                        <input
+                            type="color"
+                            value={customAccent}
+                            onChange={(e) => setCustomAccent(e.target.value)}
+                            className="absolute inset-0 w-full h-full cursor-pointer"
+                            aria-label="Chọn màu nhấn"
+                        />
+                    </label>
+                    <span className="font-mono text-sm font-bold text-white bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 uppercase">{customAccent}</span>
+                    <button
+                        type="button"
+                        onClick={() => setTheme({ preset: 'custom', accent: customAccent })}
+                        className="font-bold text-sm text-white px-5 py-2.5 rounded-xl shadow-lg transition hover:brightness-110 active:scale-95"
+                        style={{ backgroundColor: customAccent }}
+                    >
+                        Dùng màu này
+                    </button>
+                    {theme?.preset === 'custom' && <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/10 text-gray-300">Đang dùng màu riêng</span>}
+                </div>
+            </div>
+
+            {/* (c) Bo góc card */}
+            <OptionGroup label="Bo góc card" options={RADIUS_OPTIONS} value={theme?.radius || 'medium'} onChange={(v) => setTheme({ radius: v })} accent={accent} />
+
+            {/* (d) Cỡ chữ */}
+            <OptionGroup label="Cỡ chữ" options={FONT_SIZE_OPTIONS} value={theme?.fontSize || 'medium'} onChange={(v) => setTheme({ fontSize: v })} accent={accent} />
+
+            {/* (e) Mật độ hiển thị */}
+            <OptionGroup label="Mật độ hiển thị" options={DENSITY_OPTIONS} value={theme?.density || 'comfortable'} onChange={(v) => setTheme({ density: v })} accent={accent} />
+
+            {/* (f) Ẩn/hiện hàng trang chủ */}
+            <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3">Hàng hiển thị trên trang chủ</p>
+                <p className="text-xs text-gray-500 mb-3">Bỏ tick để ẩn một hàng khỏi trang chủ. Hàng đã ẩn vẫn xem được qua menu.</p>
+                <div className="space-y-2">
+                    {HOME_ROWS.map((row) => {
+                        const visible = !hiddenRows.includes(row.slug);
+                        return (
+                            <label key={row.slug} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:bg-white/10 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={visible}
+                                    onChange={() => toggleRow(row.slug)}
+                                    className="w-4 h-4 accent-red-600 cursor-pointer"
+                                />
+                                <span className={`text-sm font-bold ${visible ? 'text-white' : 'text-gray-500 line-through'}`}>{row.title}</span>
+                                {!visible && <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-gray-400">ĐÃ ẨN</span>}
+                            </label>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* (g) Hiệu ứng */}
+            <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Hiệu ứng</p>
+                <ToggleRow label="Animation mượt" desc="Hiệu ứng chuyển động khi chuyển slide, hover card" checked={theme?.animations !== false} onChange={(v) => setTheme({ animations: v })} accent={accent} />
+                <ToggleRow label="Hiệu ứng kính mờ" desc="Nền mờ (glass) trên dropdown, popup và thanh công cụ" checked={theme?.glass !== false} onChange={(v) => setTheme({ glass: v })} accent={accent} />
+            </div>
+
+            {/* (h) Đặt lại mặc định */}
+            <div className="pt-2 border-t border-white/10">
+                <button
+                    type="button"
+                    onClick={() => { resetTheme(); if (onReset) onReset(); }}
+                    className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2 active:scale-95"
+                >
+                    <FaUndo className="text-xs" /> Đặt lại mặc định
+                </button>
+                <p className="text-xs text-gray-500 mt-2">Về bộ màu Đỏ Đô mặc định cùng các tùy chọn gốc.</p>
+            </div>
+        </div>
+    );
+};
+
 const Profile = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(getCurrentUser());
@@ -53,6 +262,16 @@ const Profile = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [toast, setToast] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Cá nhân hóa giao diện (Nhóm C): lấy đúng hợp đồng của nhóm B.
+    // Phòng thủ: nếu ThemeProvider chưa bọc App thì mục Giao diện vẫn
+    // render (dùng FALLBACK_PRESETS + setTheme/resetTheme rỗng) thay vì crash.
+    let themeApi = null;
+    try { themeApi = useTheme(); } catch (e) { themeApi = null; }
+    const theme = themeApi?.theme;
+    const setTheme = themeApi?.setTheme || (() => {});
+    const resetTheme = themeApi?.resetTheme || (() => {});
+    const themePresets = themeApi?.presets || [];
 
     const fetchFavs = async () => {
         try {
@@ -186,6 +405,16 @@ const Profile = () => {
                     </div>
                 )}
             </div>
+            {/* Mục Giao diện (Nhóm C): cùng component với tab trong modal Cài đặt. */}
+            <div className="container mx-auto px-4 md:px-12 mt-14">
+                <div className="mb-8 flex items-end justify-between border-b border-white/10 pb-4">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3"><FaPalette className="text-red-600" /> Giao Diện Của Tôi</h2>
+                    <span className="text-xs font-bold text-gray-500">Tự lưu theo tài khoản</span>
+                </div>
+                <div className="max-w-3xl">
+                    <ThemeSettings theme={theme} setTheme={setTheme} resetTheme={resetTheme} presets={themePresets} onReset={() => setToast({ type: 'success', message: 'Đã đặt lại giao diện mặc định.' })} />
+                </div>
+            </div>
             {showEdit && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
                     <div className="bg-[#0a0a0a] w-full max-w-4xl h-[650px] rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
@@ -193,7 +422,7 @@ const Profile = () => {
                         <div className="w-full md:w-72 bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-6 flex flex-col">
                             <div className="mb-8"><h3 className="text-xl font-bold text-white">Cài đặt tài khoản</h3></div>
                             <div className="space-y-2 flex-1">
-                                {[{ id: 'info', icon: FaIdCard, label: 'Thông tin chung' }, { id: 'avatar', icon: FaImage, label: 'Ảnh đại diện' }, { id: 'password', icon: FaLock, label: 'Bảo mật' }].map(tab => (
+                                {[{ id: 'info', icon: FaIdCard, label: 'Thông tin chung' }, { id: 'avatar', icon: FaImage, label: 'Ảnh đại diện' }, { id: 'password', icon: FaLock, label: 'Bảo mật' }, { id: 'theme', icon: FaPalette, label: 'Giao diện' }].map(tab => (
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm transition flex items-center gap-3 ${activeTab === tab.id ? 'bg-white text-black' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><tab.icon /> {tab.label}</button>
                                 ))}
                             </div>
@@ -224,10 +453,17 @@ const Profile = () => {
                                             <div className="space-y-4"><input type="password" placeholder="Mật khẩu mới" className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-5 text-white focus:border-red-600 outline-none transition" value={formData.newPassword} onChange={(e) => setFormData({...formData, newPassword: e.target.value})} /><input type="password" placeholder="Nhập lại mật khẩu mới" className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-5 text-white focus:border-red-600 outline-none transition" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} /></div>
                                         </div>
                                     )}
+                                    {activeTab === 'theme' && (
+                                        <ThemeSettings theme={theme} setTheme={setTheme} resetTheme={resetTheme} presets={themePresets} onReset={() => setToast({ type: 'success', message: 'Đã đặt lại giao diện mặc định.' })} />
+                                    )}
                                 </form>
                             </div>
                             <div className="p-6 border-t border-white/10 flex justify-end bg-black/20">
-                                <button onClick={handleUpdate} disabled={isSaving} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-900/20 transition flex items-center gap-2 disabled:opacity-50">{isSaving ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang lưu...</> : <><FaSave /> Lưu Thay Đổi</>}</button>
+                                {activeTab === 'theme' ? (
+                                    <span className="text-xs font-bold text-gray-500 flex items-center gap-2"><FaCheckCircle className="text-green-500" /> Giao diện tự lưu ngay khi bạn thay đổi</span>
+                                ) : (
+                                    <button onClick={handleUpdate} disabled={isSaving} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-red-900/20 transition flex items-center gap-2 disabled:opacity-50">{isSaving ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Đang lưu...</> : <><FaSave /> Lưu Thay Đổi</>}</button>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Favorite = require('../models/Favorite');
 const History = require('../models/History'); 
 const bcrypt = require('bcryptjs');
+const { validateTheme } = require('../utils/themeValidation');
 
 // --- FAVORITES ---
 exports.getFavorites = async (req, res) => {
@@ -55,6 +56,34 @@ exports.updateProfile = async (req, res) => {
         const updatedUser = await User.findById(req.user.id);
         res.json({ message: 'Cập nhật thành công!', user: updatedUser });
     } catch (error) { res.status(500).json({ message: 'Lỗi cập nhật hồ sơ' }); }
+};
+
+// --- THEME (Custom UI, 23/11/2026) ---
+// PATCH /api/user/theme — lưu theme giao diện của CHÍNH user đang đăng
+// nhập (user id lấy từ JWT, không nhận user id từ body nên không sửa
+// được theme của người khác). Body: { "theme": {...} }.
+// Validate ở server/src/utils/themeValidation.js. Trả về theme đã lưu.
+exports.updateTheme = async (req, res) => {
+    try {
+        const { theme } = req.body || {};
+        const result = validateTheme(theme);
+        if (!result.valid) {
+            return res.status(400).json({ message: result.error });
+        }
+
+        await User.updateTheme(req.user.id, result.theme);
+
+        // Đọc lại từ DB để trả về đúng theme đã lưu (đã parse JSON).
+        const updatedUser = await User.findById(req.user.id);
+        res.json({ message: 'Đã lưu giao diện!', theme: updatedUser ? (updatedUser.theme ?? null) : result.theme });
+    } catch (error) {
+        console.error('UpdateTheme Error:', error);
+        // DB chưa migrate 003 (thiếu cột theme) -> lỗi ER_BAD_FIELD_ERROR.
+        if (error && error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(500).json({ message: 'Server chưa migrate cột theme. Chạy: npm run migrate (trong server/).' });
+        }
+        res.status(500).json({ message: 'Lỗi lưu giao diện' });
+    }
 };
 
 // --- HISTORY ---

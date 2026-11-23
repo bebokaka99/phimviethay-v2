@@ -112,7 +112,7 @@ const HistoryItem = ({ item, onDelete, onResume }) => {
 
                 {/* Progress Bar (Visual, như cũ) */}
                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-700">
-                    <div className="h-full bg-red-600 w-3/4 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
+                    <div className="h-full bg-[var(--accent)] w-3/4 shadow-[0_0_10px_rgba(var(--accent-rgb),0.8)]"></div>
                 </div>
             </div>
 
@@ -188,7 +188,7 @@ const History = () => {
     };
 
     return (
-        <div className="min-h-screen text-white font-sans pb-20 selection:bg-red-600 selection:text-white">
+        <div className="min-h-screen text-white font-sans pb-20 selection:bg-[var(--accent)] selection:text-white">
             <Helmet>
                 <title>Lịch Sử Xem | PhimVietHay</title>
             </Helmet>
@@ -197,7 +197,7 @@ const History = () => {
                 {/* Header */}
                 <div className="mb-10 border-b border-white/10 pb-6 flex items-end justify-between">
                     <h1 className="text-2xl md:text-3xl font-bold uppercase tracking-wide flex items-center gap-3">
-                        <span className="text-red-600 border-l-4 border-red-600 pl-3">Lịch Sử Xem</span>
+                        <span className="text-[var(--accent)] border-l-4 border-[var(--accent)] pl-3">Lịch Sử Xem</span>
                     </h1>
                     {history.length > 0 && (
                         <button 
@@ -212,7 +212,7 @@ const History = () => {
                 {/* Content */}
                 {loading && !showModal ? (
                     <div className="flex justify-center py-40">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div>
                     </div>
                 ) : history.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 gap-y-8">
@@ -229,7 +229,7 @@ const History = () => {
                     <div className="py-20 text-center border-2 border-dashed border-gray-800 rounded-2xl bg-white/5">
                         <FaHistory className="text-6xl mx-auto mb-4 text-gray-700"/>
                         <p className="text-xl font-bold text-gray-400">Lịch sử trống.</p>
-                        <button onClick={() => navigate('/')} className="mt-6 bg-red-600 px-8 py-3 rounded-full font-bold hover:bg-red-700 transition text-white shadow-lg">
+                        <button onClick={() => navigate('/')} className="mt-6 bg-[var(--accent)] px-8 py-3 rounded-full font-bold hover:bg-[var(--accent-hover)] transition text-white shadow-lg">
                             Xem phim ngay
                         </button>
                     </div>

@@ -1,5 +1,38 @@
 const db = require('../config/database');
 
+// --- THEME (Custom UI, 23/11/2026) ---
+// Cột users.theme là JSON, NULL = chưa lưu theme (dùng mặc định).
+// MariaDB trả JSON về dạng chuỗi LONGTEXT, MySQL 8.0 có thể trả object
+// đã parse sẵn — parseTheme chấp nhận cả hai. Chuỗi hỏng -> null,
+// KHÔNG crash (theme hỏng thì dùng mặc định, không chặn login/profile).
+function parseTheme(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+// Ghi theme: object -> chuỗi JSON; null/undefined -> NULL trong DB.
+function stringifyTheme(theme) {
+    if (theme === null || theme === undefined) return null;
+    return JSON.stringify(theme);
+}
+
+// Gắn theme đã parse vào row trả về (row có thể không có cột theme nếu
+// DB chưa migrate 003 — khi đó theme = null).
+function withParsedTheme(row) {
+    if (!row) return row;
+    row.theme = parseTheme(row.theme);
+    return row;
+}
+
 class User {
     // --- CÁC HÀM CŨ (GIỮ NGUYÊN 100% LOGIC) ---
 
@@ -10,7 +43,7 @@ class User {
                 'SELECT * FROM users WHERE email = ? OR username = ?', 
                 [identifier, identifier]
             );
-            return rows[0];
+            return withParsedTheme(rows[0]);
         } catch (e) { return null; }
     }
 
@@ -45,8 +78,33 @@ class User {
     }
 
     static async findById(id) {
-        const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, role, banned_until FROM users WHERE id = ?', [id]);
-        return rows[0];
+        try {
+            const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, theme, role, banned_until FROM users WHERE id = ?', [id]);
+            return withParsedTheme(rows[0]);
+        } catch (e) {
+            // DB chưa migrate 003 (chưa có cột theme): đọc lại không có
+            // cột theme để getMe/login vẫn chạy, theme trả về null.
+            // Xem database/migrations/003_add_user_theme.sql — chạy
+            // `npm run migrate` trong server/ để thêm cột.
+            if (e && e.code === 'ER_BAD_FIELD_ERROR') {
+                const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, role, banned_until FROM users WHERE id = ?', [id]);
+                const row = rows[0];
+                if (row) row.theme = null;
+                return row;
+            }
+            throw e;
+        }
+    }
+
+    // Lưu theme giao diện của user (PATCH /api/user/theme).
+    // theme = object (đã validate ở controller) -> lưu JSON;
+    // theme = null -> xóa theme đã lưu (về mặc định).
+    static async updateTheme(id, theme) {
+        const [result] = await db.execute(
+            'UPDATE users SET theme = ? WHERE id = ?',
+            [stringifyTheme(theme), id]
+        );
+        return result;
     }
 
     static async update(id, data) {
@@ -58,6 +116,12 @@ class User {
         // Thêm update google_id nếu cần link tài khoản sau này
         if (data.google_id) { fields.push('google_id = ?'); values.push(data.google_id); }
         if (data.auth_type) { fields.push('auth_type = ?'); values.push(data.auth_type); }
+        // Theme: dùng 'theme' in data (không check truthy) để cho phép
+        // ghi null (= xóa theme về mặc định). Object -> JSON string.
+        if (data && Object.prototype.hasOwnProperty.call(data, 'theme')) {
+            fields.push('theme = ?');
+            values.push(stringifyTheme(data.theme));
+        }
 
         if (fields.length === 0) return null;
         values.push(id);
@@ -96,7 +160,7 @@ class User {
     static async findByGoogleId(googleId) {
         try {
             const [rows] = await db.execute('SELECT * FROM users WHERE google_id = ?', [googleId]);
-            return rows[0];
+            return withParsedTheme(rows[0]);
         } catch (e) { return null; }
     }
 
@@ -104,7 +168,7 @@ class User {
     static async findByEmail(email) {
         try {
             const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-            return rows[0];
+            return withParsedTheme(rows[0]);
         } catch (e) { return null; }
     }
 
@@ -123,5 +187,9 @@ class User {
         }
     }
 }
+
+// Cho phép test/unit dùng lại logic parse (không gọi DB).
+User.parseTheme = parseTheme;
+User.stringifyTheme = stringifyTheme;
 
 module.exports = User;

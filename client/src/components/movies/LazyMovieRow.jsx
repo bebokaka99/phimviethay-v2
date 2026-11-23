@@ -11,10 +11,13 @@ const LazyMovieRow = ({ title, slug, type }) => {
     
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(true);
+    // Giai đoạn 3 (L9): đánh dấu đã tải xong để không gọi lại khi cuộn
+    // ra/vào, và để phân biệt "đang tải" với "0 phim".
+    const [fetched, setFetched] = useState(false);
 
     useEffect(() => {
-        // Chỉ gọi API khi isVisible = true và chưa có movies
-        if (isVisible && movies.length === 0) {
+        // Chỉ gọi API khi isVisible = true và chưa tải lần nào
+        if (isVisible && !fetched) {
             const fetchData = async () => {
                 try {
                     const res = await getMoviesBySlug(slug, 1, type);
@@ -25,11 +28,16 @@ const LazyMovieRow = ({ title, slug, type }) => {
                     console.error(`Lỗi tải ${title}:`, error);
                 } finally {
                     setLoading(false);
+                    setFetched(true);
                 }
             };
             fetchData();
         }
-    }, [isVisible, slug, type, title, movies.length]);
+    }, [isVisible, slug, type, title, fetched]);
+
+    // Giai đoạn 3 (L9): 3 trạng thái riêng — chưa cuộn tới (giữ chỗ),
+    // đang tải (skeleton), 0 phim (ẩn hẳn hàng, không để skeleton chạy mãi).
+    if (fetched && !loading && movies.length === 0) return null;
 
     return (
         // Div giữ chỗ (Placeholder)
