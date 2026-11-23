@@ -64,7 +64,11 @@ class User {
     static async create(username, email, password, fullname) {
         const [result] = await db.execute(
             'INSERT INTO users (username, email, password, fullname) VALUES (?, ?, ?, ?)',
-            [username, email, password, fullname]
+            // mysql2 từ chối bind parameter undefined (nổ lỗi
+            // "Bind parameters must not contain undefined") nên chuẩn hóa
+            // fullname thiếu thành null (cột fullname NULLABLE) — cùng lỗi
+            // từng gặp ở Favorite/History khi thiếu field (đã sửa 23/11).
+            [username, email, password, fullname || null]
         );
         return result.insertId;
     }
