@@ -1,12 +1,14 @@
 /**
- * PhimVietHay — Migration runner (001_init.sql + 003_add_user_theme.sql)
+ * PhimVietHay — Migration runner (001_init.sql + 003_add_user_theme.sql
+ *   + 004_admin_settings_views.sql)
  * ---------------------------------------------------------------
  * Chạy:  npm run migrate        (trong thư mục server/)
  *        node ../database/migrations/migrate.js   (từ thư mục server/)
  *        node database/migrations/migrate.js      (từ gốc repo)
  *
- * Chạy 001_init.sql rồi 003_add_user_theme.sql (thêm cột theme JSON
- * cho bảng users — tính năng Custom UI, 23/11/2026). File
+ * Chạy 001_init.sql rồi 003_add_user_theme.sql rồi
+ * 004_admin_settings_views.sql (bảng settings + movie_views — Admin
+ * Settings + đếm lượt xem, 23/11/2026). File
  * 002_add_google_auth.sql KHÔNG tự chạy — nó chỉ dùng khi tích hợp
  * lại Google login (xem database/README.md).
  *
@@ -19,9 +21,10 @@
  *   DB_SSL        'true' để bật SSL (bắt buộc với TiDB Serverless)
  *
  * Hành vi: tạo database nếu chưa có -> chạy lần lượt từng migration
- * (001 rồi 003; CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS
- * nên chạy lại an toàn) -> ghi nhận từng version vào bảng
- * schema_migrations -> kiểm tra lại 7 bảng + cột users.theme và in báo cáo.
+ * (001 rồi 003 rồi 004; CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT
+ * EXISTS / INSERT IGNORE nên chạy lại an toàn) -> ghi nhận từng version
+ * vào bảng schema_migrations -> kiểm tra lại 9 bảng + cột users.theme
+ * + đủ 6 key settings mặc định rồi in báo cáo.
  */
 const fs = require('fs');
 const path = require('path');
@@ -35,14 +38,17 @@ const mysql = serverRequire('mysql2/promise');
 serverRequire('dotenv').config({ path: path.join(__dirname, '..', '..', 'server', '.env') });
 
 // Thứ tự chạy quan trọng: 001 tạo bảng users trước, 003 thêm cột theme
-// vào bảng đó sau. 002 KHÔNG có trong danh sách này (Google auth chưa
-// tích hợp lại — chạy tay khi cần, xem database/README.md).
+// vào bảng đó sau, 004 tạo bảng settings + movie_views (không phụ thuộc
+// bảng nào khác ngoài schema_migrations do 001 tạo). 002 KHÔNG có trong
+// danh sách này (Google auth chưa tích hợp lại — chạy tay khi cần,
+// xem database/README.md).
 const MIGRATIONS = [
     { version: '001_init', file: '001_init.sql' },
     { version: '003_add_user_theme', file: '003_add_user_theme.sql' },
+    { version: '004_admin_settings_views', file: '004_admin_settings_views.sql' },
 ];
 
-// 7 bảng mà code backend đang dùng (đối chiếu trong 001_init.sql).
+// 9 bảng mà code backend đang dùng (đối chiếu trong 001_init.sql + 004).
 // Bảng movies đã BỎ (23/11/2026) cùng movieController — xem 001_init.sql.
 // Lưu ý: bảng users trong 001_init.sql đã TẠM LOẠI BỎ google_id +
 // auth_type (Google auth tích hợp lại sau bằng 002_add_google_auth.sql).
@@ -54,6 +60,18 @@ const EXPECTED_TABLES = [
     'comment_likes',
     'behavior_logs',
     'episode_intelligence',
+    'settings',
+    'movie_views',
+];
+
+// 6 key settings mặc định nhóm player mà 004 phải seed (INSERT IGNORE).
+const EXPECTED_SETTING_KEYS = [
+    'player_license',
+    'player_logo_file',
+    'player_logo_link',
+    'player_logo_position',
+    'player_vast_file',
+    'player_vast_skipoffset',
 ];
 
 function env(name, fallback) {
@@ -106,7 +124,7 @@ async function main() {
             );
         }
 
-        // Kiểm chứng: 7 bảng có đủ + đếm cột mỗi bảng.
+        // Kiểm chứng: 9 bảng có đủ + đếm cột mỗi bảng.
         const [rows] = await conn.query(
             `SELECT TABLE_NAME AS t, COUNT(*) AS cols
                FROM INFORMATION_SCHEMA.COLUMNS
@@ -149,7 +167,26 @@ async function main() {
             console.error('[migrate] Migration chạy nhưng thiếu bảng/cột — kiểm tra lại file SQL');
             process.exit(1);
         }
-        console.log('[migrate] XONG — đủ 7 bảng + cột users.theme.');
+        // Kiểm chứng thêm: bảng settings (004) phải có đủ 6 key mặc định.
+        const [settingRows] = await conn.query(
+            `SELECT setting_key AS k FROM settings
+              WHERE setting_key IN (${EXPECTED_SETTING_KEYS.map(() => '?').join(', ')})`,
+            EXPECTED_SETTING_KEYS
+        );
+        const foundKeys = new Set(settingRows.map((r) => r.k));
+        const missingKeys = EXPECTED_SETTING_KEYS.filter((k) => !foundKeys.has(k));
+        if (missingKeys.length === 0) {
+            console.log('[migrate] ✓ settings: đủ 6 key mặc định nhóm player');
+        } else {
+            console.log(`[migrate] ✗ THIẾU key settings: ${missingKeys.join(', ')}`);
+            ok = false;
+        }
+
+        if (!ok) {
+            console.error('[migrate] Migration chạy nhưng thiếu key settings — kiểm tra lại 004_admin_settings_views.sql');
+            process.exit(1);
+        }
+        console.log('[migrate] XONG — đủ 9 bảng + cột users.theme + 6 key settings.');
     } finally {
         await conn.end();
     }

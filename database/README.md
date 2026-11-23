@@ -13,7 +13,8 @@ database/
     ├── 001_init.sql           Tạo toàn bộ database (7 bảng)
     ├── 002_add_google_auth.sql Khôi phục Google auth (CHƯA áp dụng — xem dưới)
     ├── 003_add_user_theme.sql Thêm cột users.theme (JSON) — Custom UI
-    └── migrate.js             Script chạy migration 001 + 003
+    ├── 004_admin_settings_views.sql Bảng settings + movie_views — Admin Settings + đếm lượt xem
+    └── migrate.js             Script chạy migration 001 + 003 + 004
 ```
 
 ## Chạy migration
@@ -32,10 +33,12 @@ node database/migrations/migrate.js
 ```
 
 Script sẽ: tạo database nếu chưa có → chạy `001_init.sql` rồi
-`003_add_user_theme.sql` → ghi nhận vào bảng `schema_migrations` →
-kiểm tra lại đủ 7 bảng + cột `users.theme` rồi in báo cáo.
+`003_add_user_theme.sql` rồi `004_admin_settings_views.sql` → ghi nhận
+vào bảng `schema_migrations` → kiểm tra lại đủ 9 bảng + cột
+`users.theme` + đủ 6 key settings mặc định rồi in báo cáo.
 Chạy lại nhiều lần an toàn (mọi câu đều `CREATE TABLE IF NOT EXISTS` /
-`ADD COLUMN IF NOT EXISTS`).
+`ADD COLUMN IF NOT EXISTS` / `INSERT IGNORE` — chạy lại 004 không ghi
+đè giá trị settings admin đã đổi).
 
 ## Theme giao diện — migration 003 (Custom UI, 23/11/2026)
 
@@ -49,6 +52,24 @@ API: `GET /api/auth/me` trả thêm `theme`; `PATCH /api/user/theme`
 danh sách tối, accent phải là hex). MariaDB lưu JSON dạng LONGTEXT
 nên backend tự parse/stringify (`server/src/models/User.js`); chuỗi
 JSON hỏng trong DB trả về `null`, không crash.
+
+## Admin Settings + đếm lượt xem — migration 004 (23/11/2026)
+
+- Bảng `settings` (key/value chuỗi, nhóm `setting_group`): cấu hình trình
+  phát do admin chỉnh qua `GET/PUT /api/admin/settings` (xem
+  `server/src/controllers/settingsController.js` +
+  `server/src/utils/settingsValidation.js`). Seed mặc định 6 key nhóm
+  `player` bằng `INSERT IGNORE` (chạy lại không ghi đè giá trị admin
+  đã đổi): `player_license` (''), `player_logo_file` (''),
+  `player_logo_link` (''), `player_logo_position` ('top-right'),
+  `player_vast_file` (''), `player_vast_skipoffset` ('5').
+- Bảng `movie_views` (`slug`, `ip_hash` CHAR(64) = sha256 của IP — KHÔNG
+  lưu IP thô, `user_id` NULL nếu khách, `viewed_at`): 1 row = 1 lượt xem
+  đã ghi. API `POST /api/views` (public, không cần login) chống spam:
+  cùng `ip_hash` + `slug` trong 30 phút chỉ ghi 1 row; thống kê ở
+  `GET /api/admin/stats/views` (hôm nay / 7 ngày / 30 ngày + top 10,
+  chỉ slug + views — backend không gọi vsmov lấy tên phim).
+  Xem `server/src/controllers/viewsController.js`.
 
 > Bảng `movies` đã bỏ (23/11/2026) cùng `movieController` — code chết cả
 > 2 phía, frontend gọi thẳng vsmov. File 001 gốc còn bảng này được lưu tại
@@ -87,6 +108,8 @@ DB_NAME=phimviethay
 | 5 | `comment_likes` | Like bình luận |
 | 6 | `behavior_logs` | Log hành vi player (suy ra intro/credits), chống spam 50 log/IP/ngày |
 | 7 | `episode_intelligence` | Mốc intro/credits từng tập (player + admin God Mode) |
+| 8 | `settings` | Cấu hình key/value (nhóm player: license/logo/VAST) — Admin Settings |
+| 9 | `movie_views` | Lượt xem theo slug + sha256 IP (chống spam 30 phút) — thống kê views |
 
 Bảng `schema_migrations` chỉ để ghi nhận migration đã chạy.
 

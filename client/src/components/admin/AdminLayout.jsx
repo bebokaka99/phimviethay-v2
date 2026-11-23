@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../services/authService';
-import { FaChartBar, FaUsers, FaComments, FaSignOutAlt, FaHome, FaMagic } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaComments, FaSignOutAlt, FaHome, FaMagic, FaPlay, FaEye } from 'react-icons/fa';
 import Logo from '../common/Logo';
 
 const AdminLayout = () => {
@@ -26,6 +26,8 @@ const AdminLayout = () => {
       { name: 'Người dùng', path: '/admin/users', icon: <FaUsers /> },
       { name: 'Bình luận', path: '/admin/comments', icon: <FaComments /> },
       { name: 'Intro & Ending', path: '/admin/intros', icon: <FaMagic /> }, 
+      { name: 'Trình phát', path: '/admin/player', icon: <FaPlay /> },
+      { name: 'Lượt xem', path: '/admin/views', icon: <FaEye /> },
   ];
 
   return (

@@ -116,6 +116,22 @@ const MovieDetail = () => {
     const castRef = useRef(null);
     const galleryRef = useRef(null);
 
+    // Nhom C — ghi luot xem: useEffect RIENG, chi chay khi mo trang chi tiet.
+    // Fire-and-forget: khong await chan UI, khong setState, loi bo qua im lang.
+    // Guard bang ref de React StrictMode (dev) chay effect 2 lan cung chi goi 1 lan/slug.
+    // KHONG goi o WatchMovie / trang chu / hover card.
+    const recordedViewRef = useRef(null);
+    useEffect(() => {
+        if (!slug || recordedViewRef.current === slug) return;
+        recordedViewRef.current = slug;
+        const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        fetch(`${BASE_URL}/views`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug }),
+        }).catch(() => {});
+    }, [slug]);
+
     useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 
     // --- API CALLS ---

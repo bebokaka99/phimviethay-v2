@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const settingsController = require('../controllers/settingsController');
+const viewsController = require('../controllers/viewsController');
 
 // Middlewares
 const verifyToken = require('../middlewares/authMiddleware');
@@ -11,6 +13,11 @@ router.use(verifyToken, verifyAdmin);
 
 // --- Stats ---
 router.get('/stats', adminController.getStats);
+router.get('/stats/views', viewsController.getViewsStats);
+
+// --- Settings (player: license/logo/VAST) ---
+router.get('/settings', settingsController.getSettings);
+router.put('/settings', settingsController.updateSettings);
 
 // --- Users ---
 router.get('/users', adminController.getAllUsers);

@@ -108,3 +108,20 @@ export const banUser = async (id, days) => {
         return false;
     }
 };
+
+// 7. Cài đặt Trình phát (Player settings)
+export const getPlayerSettings = async () => {
+    try {
+        const res = await axios.get(`${BASE_URL}/admin/settings`, getAuthHeader());
+        return res.data;
+    } catch (error) { throw error; }
+};
+
+export const updatePlayerSettings = async (values) => {
+    try {
+        const res = await axios.put(`${BASE_URL}/admin/settings`, values, getAuthHeader());
+        return res.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Lỗi lưu cài đặt trình phát';
+    }
+};

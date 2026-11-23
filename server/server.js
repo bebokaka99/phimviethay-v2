@@ -66,6 +66,9 @@ app.use('/api/user', require('./src/routes/userRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
+app.use('/api/views', require('./src/routes/viewsRoutes')); // Public: đếm lượt xem, không cần login
+app.use('/api', require('./src/routes/extractRoutes')); // Public: tách m3u8 từ link embed vsmov
+app.use('/api', require('./src/routes/playerKeyRoutes')); // Public: trả key trình phát (player_license)
 
 app.use((err, req, res, next) => {
     if (process.env.NODE_ENV === 'development') console.error('🔥 Error:', err.stack);
