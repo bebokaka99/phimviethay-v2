@@ -6,11 +6,8 @@ import {
     FaHeart, FaDragon, FaGem, FaMicrophoneAlt
 } from 'react-icons/fa';
 import MovieCard from './MovieCard';
-import { useTheme } from '../../context/ThemeContext';
 
 // --- CẤU HÌNH THEME (Map class tĩnh 100% để Tailwind biên dịch chuẩn xác) ---
-// Export để WatchMovie.jsx tái dùng đúng 1 theme cho thẻ tiêu đề "Phim tương tự"
-// (vòng 4, 23/11/2026) thay vì hardcode map thứ hai dễ lệch.
 export const SECTION_THEMES = {
     // 1. Phim Lẻ
     'phim-le': {
@@ -136,18 +133,6 @@ export const SECTION_THEMES = {
 const MovieRow = ({ title, movies, slug, type = 'danh-sach' }) => {
     const navigate = useNavigate();
     const rowRef = useRef(null);
-
-    // Nhóm D (Custom UI, 23/11/2026): mật độ hiển thị — đọc theme.density
-    // qua useTheme() (hợp đồng nhóm B). Khi chưa có Provider (nhóm B chưa
-    // gắn) thì fallback 'comfortable' thay vì crash — đúng mẫu try/catch
-    // của Profile.jsx (nhóm C). Gap giữa các card dùng biến --card-gap do
-    // ThemeContext đặt (compact=8px, comfortable=16px), fallback 16px.
-    // KHÔNG sửa index.css (file của nhóm B).
-    let themeApi = null;
-    try { themeApi = useTheme(); } catch (e) { themeApi = null; }
-    const density = themeApi?.theme?.density || 'comfortable';
-    const isCompact = density === 'compact';
-    const cardWidthClass = isCompact ? 'w-[120px] md:w-[160px]' : 'w-[150px] md:w-[200px]';
 
     // Ưu tiên lấy theme theo slug, fallback sang type hoặc default
     const themeKey = SECTION_THEMES[slug] ? slug : (SECTION_THEMES[type] ? type : 'default');
@@ -286,13 +271,13 @@ const MovieRow = ({ title, movies, slug, type = 'danh-sach' }) => {
                 <div className="flex-1 min-w-0 relative z-20">
                     <div 
                         ref={rowRef}
-                        className="flex overflow-x-auto gap-[var(--card-gap,16px)] pl-4 pr-16 md:pl-0 md:pr-24 pb-8 pt-2 scrollbar-hide scroll-smooth items-center snap-x snap-mandatory"
+                        className="flex overflow-x-auto gap-4 pl-4 pr-16 md:pl-0 md:pr-24 pb-8 pt-2 scrollbar-hide scroll-smooth items-center snap-x snap-mandatory"
                         style={{ perspective: '1000px' }}
                     >
                         {movies.map((movie, index) => (
                             <div 
                                 key={movie._id} 
-                                className={`flex-none ${cardWidthClass} snap-start animate-card-entrance`}
+                                className="flex-none w-[150px] md:w-[200px] snap-start animate-card-entrance"
                                 style={{ 
                                     animationDelay: `${Math.min(index * 45, 300)}ms`,
                                     scrollSnapAlign: 'start'
@@ -302,20 +287,10 @@ const MovieRow = ({ title, movies, slug, type = 'danh-sach' }) => {
                             </div>
                         ))}
                         
-                        {/* Ô "Xem tất cả" ở cuối hàng — nằm trong khung cuộn ngang,
-                            bấm vào đi tới danh sách đầy đủ của hàng (handleViewAll:
-                            /{type}/{slug}, vd /quoc-gia/han-quoc). Hiện mọi cỡ màn hình. */}
-                        <div
-                            onClick={handleViewAll}
-                            role="button"
-                            aria-label={`Xem tất cả ${title}`}
-                            className={`flex-none ${cardWidthClass} aspect-[2/3] rounded-[var(--card-radius,12px)] bg-gradient-to-b ${theme.gradient} border ${theme.border} flex flex-col items-center justify-center gap-3 cursor-pointer snap-start group/more transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${theme.hoverShadow}`}
-                        >
-                            <div className={`w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 border border-white/30 flex items-center justify-center text-white shadow-lg transition-transform duration-300 group-hover/more:translate-x-1`}>
-                                <FaArrowRight className="text-xl md:text-2xl" />
-                            </div>
-                            <span className="text-sm md:text-base text-white font-black uppercase tracking-wide text-center px-3">Xem tất cả</span>
-                            <span className="text-[11px] md:text-xs text-gray-300 font-medium text-center px-3 line-clamp-2">{title}</span>
+                        {/* Mobile View More */}
+                        <div onClick={handleViewAll} className="md:hidden flex-none w-[100px] aspect-[2/3] rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-95 transition-transform snap-start">
+                            <div className={`w-10 h-10 rounded-full ${theme.accent} bg-white/10 border border-current flex items-center justify-center shadow-lg`}><FaArrowRight /></div>
+                            <span className="text-xs text-gray-400 font-bold uppercase text-center px-2">Xem thêm</span>
                         </div>
                     </div>
 

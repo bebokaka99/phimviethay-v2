@@ -22,21 +22,322 @@ const epNumber = (ep) => {
     const m = String(ep?.name ?? '').match(/\d+/);
     return m ? parseInt(m[0], 10) : null;
 };
-// Player iframe embed (22/11/2026): vsmov chỉ có link_embed, không có link_m3u8
-// nên Artplayer không phát được. VideoPlayer.jsx giữ lại cho hướng resolve m3u8 sau này.
-// ĐÍNH CHÍNH 22/11/2026 (tối): m3u8 của vsmov LÀ video thật có tiếng — mỗi "ảnh PNG"
-// trong playlist thực chất là file polyglot: đầu là PNG nhỏ (199×133) rồi ~1,9 MB
-// MPEG-TS (H.264 1920×812 + AAC stereo). hls.js phát được bình thường (JWPlayer
-// trong embed cũng dùng hls.js). Vì vậy trình phát riêng bằng hls.js/Artplayer từ
-// m3u8 này LÀM ĐƯỢC — cần backend lấy URL m3u8 có chữ ký theo từng lượt xem
-// (trang embed cần header Referer mới trả link; link hết hạn sau ~1h).
-// GHI CHÚ 22/11/2026: đã từng thử che watermark VSbet bằng miếng phủ blur và đè
-// logo web lên logo VSmov (commit c356fa0/ac74d80/39aa4d1), nhưng user yêu cầu gỡ
-// hết để về nguyên bản — overlay lệch vị trí khi khung phát rộng hơn và mất hoàn
-// toàn khi xem toàn màn hình (iframe tự fullscreen). Sẽ thử lại sau khi có phương
-// án khác hợp lý hơn.
+// --- Trình phát riêng (24/11/2026): JWPlayer 8.9.3 + origin.js copy từ trang
+// embed vsmov (client/public/jwplayer/), thay iframe vsmov trước đây. m3u8 +
+// phụ đề lấy từ GET /api/extract-m3u8 theo link_embed của tập đang xem; key
+// lấy từ GET /api/player-key (bắt buộc trước khi origin.js chạy — không key
+// thì lỗi JW Player 100011). Đổi tập dùng jwplayer().load() (origin.js dùng
+// load() để đổi nguồn, dòng 4091). Chi tiết: template-embed.html +
+// swap-list.md trong ~/workspace/phimviethay-research/testplayer-copy-vsmov/.
+// GHI CHÚ 22/11/2026: đã từng thử che watermark VSbet bằng miếng phủ blur và
+// đè logo web lên logo VSmov (commit c356fa0/ac74d80/39aa4d1), nhưng user yêu
+// cầu gỡ hết để về nguyên bản — overlay lệch vị trí khi khung phát rộng hơn
+// và mất hoàn toàn khi xem toàn màn hình (iframe tự fullscreen).
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const JWPLAYER_JS = '/jwplayer/jwplayer-8.9.3.js';
+const ORIGIN_JS = '/jwplayer/origin.js';
+const PLAYER_CSS = '/jwplayer/player.css';
+const BROADCAST_CSS = '/jwplayer/broadcast-player.css';
+const JQUERY_JS = 'https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js';
+const BOOTSTRAP_JS = 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js';
+const FA_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css';
+const PLAYER_FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap';
+
+// Guard: player.css/broadcast-player.css là CSS của TRANG EMBED standalone
+// nên có vài rule toàn cục (body height 100vh + overflow hidden = khóa cuộn
+// trang; * user-select none; a trắng; body nền #000/font 14px; @media 640px
+// khóa scroll + #rp-player 100dvh). Style này nạp SAU 2 file đó nên thắng và
+// trả lại đúng giá trị của app trong client/src/index.css (body, ~dòng 85 —
+// đồng bộ khi sửa index.css). Ngoài player (#rp-player) các rule của player
+// giữ nguyên. Không nạp Bootstrap CSS (reboot + .container đè Tailwind); chỉ
+// compat tối thiểu cho class Bootstrap mà origin.js dùng — xem mục [B].
+const PLAYER_GUARD_CSS = `
+html{height:auto !important;overflow:visible !important;-webkit-text-size-adjust:100% !important;scroll-behavior:auto !important}
+body{height:auto !important;overflow-x:hidden !important;overflow-y:visible !important;background-color:var(--bg) !important;background-image:linear-gradient(to bottom,color-mix(in srgb,var(--accent) 15%,transparent) 0%,transparent 40%),linear-gradient(180deg,color-mix(in srgb,var(--accent) 18%,var(--bg)) 0%,var(--bg) 100%) !important;background-attachment:fixed !important;background-size:cover !important;background-repeat:no-repeat !important;color:var(--text) !important;font-size:var(--font-size-base) !important;font-family:'Inter',system-ui,-apple-system,sans-serif !important}
+body :not(#rp-player):not(#rp-player *){-webkit-user-select:auto;user-select:auto}
+#root a:not(#rp-player a){color:inherit !important;text-decoration:inherit !important}
+#root a:not(#rp-player a):hover{color:inherit !important}
+@media screen and (max-width:640px){html,body{height:auto !important;overflow-x:hidden !important;overflow-y:visible !important}#rp-player{height:auto !important;min-height:0 !important}}
+/* [B] Compat tối thiểu cho Bootstrap (origin.js dùng data-bs-toggle dropdown /
+tooltip + class d-none / dropdown-menu; .player-dm + .dropdown-item đã có
+style trong 2 file CSS của player, chỉ thiếu display/position của Bootstrap) */
+.d-none{display:none !important}
+.dropdown-menu{position:absolute;z-index:1000;display:none}
+.dropdown-menu.show{display:block}
+.tooltip{position:absolute;z-index:1080;display:block;opacity:0;pointer-events:none}
+.tooltip.show{opacity:.95}
+.tooltip .tooltip-inner{max-width:200px;padding:.25rem .5rem;color:#fff;text-align:center;background-color:#000;border-radius:.25rem;font-size:.875rem}
+.tooltip .tooltip-arrow{display:none}
+`;
+
+const loadScript = (src, id) => new Promise((resolve, reject) => {
+    if (document.getElementById(id)) return resolve();
+    const s = document.createElement('script');
+    s.id = id; s.src = src; s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`Không tải được ${src}`));
+    document.body.appendChild(s);
+});
+
+const loadCss = (href, id, { nonBlocking = false } = {}) => {
+    if (document.getElementById(id)) return;
+    const l = document.createElement('link');
+    l.id = id; l.rel = 'stylesheet'; l.href = href;
+    if (nonBlocking) { l.media = 'print'; l.onload = () => { l.media = 'all'; }; }
+    document.head.appendChild(l);
+};
+
+const injectStyle = (id, css) => {
+    if (document.getElementById(id)) return;
+    const st = document.createElement('style');
+    st.id = id; st.textContent = css;
+    document.head.appendChild(st);
+};
+
+const removeNode = (id) => { const el = document.getElementById(id); if (el) el.remove(); };
+
+// Hash tập phim từ link_embed (vd https://v8.streamvsmov.com/video/<hash>).
+// Chỉ dùng cho #rp-player data-hash (origin.js đọc 1 lần); URL phát thật lấy
+// từ signedMasterUrl nên hash sai/thiếu cũng không chặn phát.
+const extractVideoHash = (linkEmbed) => {
+    try {
+        const u = new URL(linkEmbed);
+        return u.pathname.split('/').filter(Boolean).pop() || '';
+    } catch { return ''; }
+};
+
+// playerOptions đúng shape template-embed.html (origin.js đọc ở dòng 2461+).
+const buildPlayerOptions = ({ m3u8, subtitles }) => ({
+    logo: '',
+    subtitles: (subtitles || []).map((s) => ({
+        name: s.label || s.code || 'Phụ đề',
+        type: 'local',
+        url: s.file, // URL tuyệt đối (backend đã resolve) — origin.js cộng origin vào URL tương đối (N2) nên bắt buộc tuyệt đối
+        _inSubtitleFolder: true,
+        code: s.code || 'vie',
+    })),
+    audios: [],
+    thumb: '',
+    linkVast: '',
+    skipOffset: '5',
+    enableSignedUrl: true, // N1 bắt buộc — origin.js tự dựng ${origin}/stream/{hash}/master.m3u8 nếu tắt
+    signedMasterUrl: m3u8,
+    volume: 100,
+    mute: false,
+    segmentCdnHosts: [], // origin.js không đọc field này (grep = 0) — giữ cho đủ shape template
+});
+
+// Nút brand PhimVietHay — y hệt mountVsmovBrand trong template-embed.html,
+// chỉ đổi logoUrl (logo mình), href ('/'), title/alt ('PhimVietHay'). GIỮ
+// nguyên tên class .vsmov-player-brand (N5: broadcast-player.css style theo
+// class này — đổi tên là mất style nút).
+const mountPlayerBrand = () => {
+    const subBtn = document.querySelector('.b_func .item-sub') || document.querySelector('.jw-caption-button');
+    if (!subBtn || !subBtn.parentElement) return false;
+    if (document.querySelector('.vsmov-player-brand')) return true;
+    const a = document.createElement('a');
+    a.className = 'vsmov-player-brand item-btn';
+    a.href = '/';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = 'PhimVietHay';
+    a.setAttribute('aria-label', 'PhimVietHay');
+    a.innerHTML =
+        '<span class="line-center vsmov-player-brand-inner">' +
+        '<img src="' + logoImg + '" alt="PhimVietHay" decoding="async" loading="lazy" />' +
+        '</span>';
+    subBtn.parentElement.insertBefore(a, subBtn);
+    return true;
+};
+
+// Màn hình loading % + click-to-play của template (origin.js gọi
+// window.bcSetPlayerLoad / window.bcHidePlayerLoad, có guard typeof nên
+// thiếu cũng không vỡ, nhưng giữ lại để có UX loading như bản gốc).
+const startBootController = () => {
+    const boot = document.getElementById('bc-player-boot');
+    const numEl = document.getElementById('bc-load-num');
+    const shell = document.getElementById('rp-player');
+    if (!boot || !numEl) return () => {};
+    const arcEl = boot.querySelector('.bc-load-arc');
+    if (shell) shell.classList.add('bc-booting');
+    let display = 0;
+    let target = 4;
+    let done = false;
+    let raf = 0;
+    const paint = (p) => {
+        const v = Math.max(0, Math.min(100, Math.round(p)));
+        numEl.textContent = String(v);
+        if (arcEl) arcEl.style.strokeDashoffset = String(100 - v);
+        boot.setAttribute('aria-label', 'Loading ' + v + '%');
+    };
+    const tick = () => {
+        raf = 0;
+        const diff = target - display;
+        if (Math.abs(diff) < 0.15) { display = target; paint(display); return; }
+        display += diff * 0.14;
+        paint(display);
+        raf = requestAnimationFrame(tick);
+    };
+    const setProgress = (p, force) => {
+        if (done && !force) return;
+        target = Math.max(target, Math.min(100, Number(p) || 0));
+        if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const onBcLoad = (e) => {
+        const p = e && e.detail && e.detail.percent;
+        if (typeof p === 'number') setProgress(p);
+    };
+    window.bcSetPlayerLoad = setProgress;
+    window.addEventListener('bc-player-load', onBcLoad);
+    setProgress(8);
+    const soft = setInterval(() => {
+        if (done || target >= 38) { clearInterval(soft); return; }
+        setProgress(Math.min(38, target + 2.5));
+    }, 280);
+    const hideBoot = () => {
+        if (done) return;
+        done = true;
+        clearInterval(soft);
+        setProgress(100, true);
+        paint(100);
+        boot.classList.add('is-done');
+        if (shell) shell.classList.remove('bc-booting');
+        setTimeout(() => { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 320);
+    };
+    window.bcHidePlayerLoad = hideBoot;
+    boot.style.pointerEvents = 'auto';
+    boot.style.cursor = 'pointer';
+    const onBootClick = () => {
+        hideBoot();
+        try {
+            const p = window.jwplayer && window.jwplayer('player');
+            if (p && typeof p.play === 'function') p.play(true);
+        } catch (e) {}
+    };
+    boot.addEventListener('click', onBootClick);
+    let bootTries = 0;
+    let sawJw = false;
+    const bootTimer = setInterval(() => {
+        const jw = document.querySelector('.jwplayer');
+        if (jw) sawJw = true;
+        const playing = jw && jw.classList.contains('jw-state-playing');
+        const waiting = jw && (jw.classList.contains('jw-state-idle') || jw.classList.contains('jw-state-paused'));
+        if (playing || (sawJw && waiting && target >= 50 && bootTries > 6)) {
+            clearInterval(bootTimer);
+            hideBoot();
+            return;
+        }
+        if (jw && jw.classList.contains('jw-state-buffering') && target < 85) {
+            setProgress(Math.min(85, target + 3));
+        }
+        if (++bootTries > 50) { clearInterval(bootTimer); hideBoot(); }
+    }, 120);
+    return () => {
+        clearInterval(soft);
+        clearInterval(bootTimer);
+        boot.removeEventListener('click', onBootClick);
+        window.removeEventListener('bc-player-load', onBcLoad);
+        delete window.bcSetPlayerLoad;
+        delete window.bcHidePlayerLoad;
+    };
+};
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
+import logoImg from '../assets/logo.png';
+
+// --- mapSubtitleTracks (inline từ playerLogic.js — bản viết lại đã xóa) ---
+// Map shape backend {file,label,code} -> JW track, vie mặc định.
+// Copy y nguyên logic từ playerLogic.js (44f0df6) để WatchMovie không còn
+// phụ thuộc file đó; chỉ đổi `export` -> local.
+const LANGUAGE_NAMES = {
+    vie: { name: "Tiếng Việt", priority: 1 },
+    eng: { name: "English", priority: 2 },
+    jpn: { name: "Tiếng Nhật", priority: 3 },
+    kor: { name: "Tiếng Hàn", priority: 4 },
+    chi: { name: "Tiếng Trung", priority: 5 },
+    zho: { name: "Tiếng Trung", priority: 5 },
+    tha: { name: "Tiếng Thái", priority: 6 },
+    ind: { name: "Tiếng Indonesia", priority: 7 },
+    fre: { name: "Tiếng Pháp", priority: 8 },
+    fra: { name: "Tiếng Pháp", priority: 8 },
+    ger: { name: "Tiếng Đức", priority: 9 },
+    deu: { name: "Tiếng Đức", priority: 9 },
+    spa: { name: "Tiếng Tây Ban Nha", priority: 10 },
+    rus: { name: "Tiếng Nga", priority: 11 },
+};
+
+const SRCLANG_MAP = {
+    vie: "vi",
+    eng: "en",
+    chi: "zh",
+    zho: "zh",
+    kor: "ko",
+    jpn: "ja",
+    tha: "th",
+    ind: "id",
+    fre: "fr",
+    fra: "fr",
+    ger: "de",
+    deu: "de",
+    spa: "es",
+    rus: "ru",
+};
+
+function iso6392ToSrclang(code) {
+    if (!code || typeof code !== "string") return "vi";
+    const c = code.trim().toLowerCase();
+    if (SRCLANG_MAP[c]) return SRCLANG_MAP[c];
+    return c.length >= 2 ? c.slice(0, 2) : "vi";
+}
+
+function mapLanguageCode(code) {
+    if (!code || typeof code !== "string") return { name: "—", priority: 99 };
+    const entry = LANGUAGE_NAMES[code.trim().toLowerCase()];
+    if (entry) return { ...entry };
+    return { name: code.trim().toUpperCase(), priority: 99 };
+}
+
+function sortPlayerSubtitles(tracks) {
+    const seen = new Set();
+    const list = (Array.isArray(tracks) ? tracks : []).filter((t) => {
+        if (!t || typeof t.file !== "string" || !t.file.trim()) return false;
+        const key = String(t.code || t.file).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return list
+        .map((t, index) => ({ t, index }))
+        .sort((a, b) => {
+            const pa = mapLanguageCode(a.t.code).priority;
+            const pb = mapLanguageCode(b.t.code).priority;
+            return pa - pb || a.index - b.index;
+        })
+        .map(({ t }) => t);
+}
+
+function findDefaultSubtitleIndex(tracks) {
+    const list = Array.isArray(tracks) ? tracks : [];
+    const vieIdx = list.findIndex(
+        (t) => typeof t.code === "string" && t.code.toLowerCase().startsWith("vie"),
+    );
+    return vieIdx >= 0 ? vieIdx : 0;
+}
+
+function mapSubtitleTracks(subtitles) {
+    const sorted = sortPlayerSubtitles(subtitles);
+    const defaultIdx = findDefaultSubtitleIndex(sorted);
+    return sorted.map((s, i) => ({
+        file: s.file,
+        kind: "subtitles",
+        label:
+            typeof s.label === "string" && s.label.trim()
+                ? s.label.trim()
+                : mapLanguageCode(s.code).name,
+        srclang: iso6392ToSrclang(s.code || "vie"),
+        default: i === defaultIdx,
+    }));
+}
 
 const Toast = ({ message, onClose }) => {
     useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
@@ -54,6 +355,61 @@ const WatchMovie = () => {
     const navigate = useNavigate();
     const currentEpSlug = searchParams.get('tap');
     const playerRef = useRef(null);
+
+    // --- Trình phát riêng (JWPlayer + origin.js copy) ---
+    const [playerError, setPlayerError] = useState(null);
+    const [retryTick, setRetryTick] = useState(0);
+    const mountedRef = useRef(true);
+    const scriptsPromiseRef = useRef(null);
+    const originExecutedRef = useRef(false);
+    const jwReadyRef = useRef(false);
+    const runIdRef = useRef(0);
+    const keyRef = useRef(null);
+    const brandTimerRef = useRef(null);
+    const bootCleanupRef = useRef(null);
+
+    // jQuery + JWPlayer + key + text origin.js (1 lần / lần mount; lỗi thì
+    // xóa cache để nút "Thử lại" tải lại từ đầu).
+    const ensurePlayerScripts = () => {
+        if (!scriptsPromiseRef.current) {
+            scriptsPromiseRef.current = (async () => {
+                if (!window.jQuery) await loadScript(JQUERY_JS, 'phimviethay-jquery');
+                if (!window.jwplayer) await loadScript(JWPLAYER_JS, 'phimviethay-jwplayer');
+                // Key BẮT BUỘC trước khi origin.js chạy (không key → lỗi JW Player 100011).
+                if (!keyRef.current) {
+                    const res = await fetch(`${API_BASE}/player-key`);
+                    if (!res.ok) throw new Error(`Không lấy được key trình phát (HTTP ${res.status}).`);
+                    const data = await res.json();
+                    if (!data?.key) throw new Error('Không lấy được key trình phát.');
+                    keyRef.current = data.key;
+                }
+                window.jwplayer.key = keyRef.current;
+                // Bootstrap JS cho dropdown/tooltip của origin.js
+                // (data-bs-toggle). Lỗi thì shim no-op để `new bootstrap.Tooltip`
+                // trong origin.js (dòng 3365) không throw.
+                try { await loadScript(BOOTSTRAP_JS, 'phimviethay-bootstrap'); }
+                catch (e) { if (!window.bootstrap) window.bootstrap = { Tooltip: function () {}, Dropdown: function () {} }; }
+                const r = await fetch(ORIGIN_JS);
+                if (!r.ok) throw new Error(`Không tải được origin.js (HTTP ${r.status}).`);
+                const text = await r.text();
+                if (!text || text.length < 10000) throw new Error('Không tải được origin.js.');
+                return text;
+            })();
+            scriptsPromiseRef.current.catch(() => { scriptsPromiseRef.current = null; });
+        }
+        return scriptsPromiseRef.current;
+    };
+
+    const startBrandPoller = () => {
+        if (brandTimerRef.current) return;
+        let tries = 0;
+        brandTimerRef.current = setInterval(() => {
+            if (mountPlayerBrand() || ++tries > 200) {
+                clearInterval(brandTimerRef.current);
+                brandTimerRef.current = null;
+            }
+        }, 200);
+    };
 
     const [movie, setMovie] = useState(null);
     const [episodes, setEpisodes] = useState([]);
@@ -203,6 +559,116 @@ const WatchMovie = () => {
         }
     }, [currentServer, episodes, movie, currentEpisode, setSearchParams]);
 
+    // Nạp asset trình phát 1 lần khi mở trang xem (gỡ khi rời trang).
+    // CSS player + guard + font/FA; script (jQuery/JWPlayer/Bootstrap) nạp
+    // lười trong ensurePlayerScripts khi đã có tập (cần DOM #rp-player).
+    useEffect(() => {
+        mountedRef.current = true;
+        loadCss(PLAYER_CSS, 'phimviethay-player-css');
+        loadCss(BROADCAST_CSS, 'phimviethay-broadcast-css');
+        loadCss(FA_CSS, 'phimviethay-fa-css', { nonBlocking: true });
+        loadCss(PLAYER_FONTS_CSS, 'phimviethay-player-fonts', { nonBlocking: true });
+        injectStyle('phimviethay-player-guard', PLAYER_GUARD_CSS);
+        document.body.classList.add('bc-player-page');
+        return () => {
+            mountedRef.current = false;
+            try {
+                const p = window.jwplayer && window.jwplayer('player');
+                if (p && typeof p.remove === 'function') p.remove();
+            } catch (e) {}
+            if (brandTimerRef.current) { clearInterval(brandTimerRef.current); brandTimerRef.current = null; }
+            if (bootCleanupRef.current) { bootCleanupRef.current(); bootCleanupRef.current = null; }
+            removeNode('phimviethay-player-css');
+            removeNode('phimviethay-broadcast-css');
+            removeNode('phimviethay-fa-css');
+            removeNode('phimviethay-player-fonts');
+            removeNode('phimviethay-player-guard');
+            document.body.classList.remove('bc-player-page');
+            document.querySelectorAll('.tooltip').forEach((el) => el.remove());
+            delete window.playerOptions;
+            delete window.videoSrc;
+            originExecutedRef.current = false;
+            jwReadyRef.current = false;
+        };
+    }, []);
+
+    // Mở tập / đổi tập: lấy m3u8 + sub rồi setup (tập đầu) hoặc load() (đổi tập).
+    useEffect(() => {
+        if (!currentEpisode?.link_embed) return undefined;
+        const runId = ++runIdRef.current;
+        let cancelled = false;
+        setPlayerError(null);
+        (async () => {
+            try {
+                const originText = await ensurePlayerScripts();
+                if (cancelled || !mountedRef.current || runId !== runIdRef.current) return;
+                const res = await fetch(`${API_BASE}/extract-m3u8?embed=${encodeURIComponent(currentEpisode.link_embed)}`);
+                if (!res.ok) throw new Error(`Không lấy được link phát (HTTP ${res.status}) — thử đổi server khác.`);
+                const data = await res.json();
+                if (!data?.m3u8) throw new Error('Không lấy được link phát cho tập này — thử đổi server khác.');
+                if (cancelled || runId !== runIdRef.current) return;
+                const subs = Array.isArray(data.subtitles) ? data.subtitles : [];
+                window.playerOptions = buildPlayerOptions({ m3u8: data.m3u8, subtitles: subs });
+                window.videoSrc = data.m3u8; // origin.js không đọc (N3) — giữ cho đủ shape template
+                try {
+                    const l = document.createElement('link');
+                    l.rel = 'preload'; l.as = 'fetch'; l.href = data.m3u8; l.crossOrigin = 'anonymous';
+                    document.head.appendChild(l);
+                } catch (e) {}
+                const tracks = [{ file: '', kind: 'thumbnails' }, ...mapSubtitleTracks(subs)];
+                if (!originExecutedRef.current) {
+                    if (!document.getElementById('rp-player') || !document.getElementById('player')) return;
+                    bootCleanupRef.current = startBootController();
+                    startBrandPoller();
+                    // origin.js nạp bằng <script> sẽ vỡ khi remount (top-level
+                    // `const playerInstance` khai báo 2 lần trong global scope
+                    // = SyntaxError, script không chạy). Nạp bằng fetch +
+                    // new Function: const/let thành function-scope, chạy lại
+                    // sạch mỗi lần mount; bare `playerOptions` / `jwplayer` /
+                    // `$` vẫn resolve qua window như script thường. (Không CSP
+                    // nào chặn eval: index.html và server đều không đặt
+                    // Content-Security-Policy.)
+                    new Function(originText)();
+                    originExecutedRef.current = true;
+                    const p = window.jwplayer('player');
+                    p.on('ready', () => { jwReadyRef.current = true; });
+                    p.on('setupError', (e) => {
+                        // Setup hỏng (vd key lỗi 100011): gỡ player hỏng + reset
+                        // cờ để nút "Thử lại" chạy lại toàn bộ setup thay vì
+                        // load() trên player đã hỏng (load() sẽ lỗi tiếp).
+                        originExecutedRef.current = false;
+                        try { p.remove(); } catch (err) {}
+                        if (mountedRef.current) setPlayerError(`Không khởi tạo được trình phát${e?.code ? ` (${e.code})` : ''}: ${e?.message || 'lỗi không rõ'}.`);
+                    });
+                    // DEFECT-1 (chỉ thuộc TestPlayer, đề phòng tái diễn):
+                    // #rp-player có chiều cao tường minh qua aspect-ratio
+                    // inline; kiểm tra lại computed height sau setup, nếu
+                    // bằng 0 thì ép chiều cao pixel theo chiều rộng khung.
+                    requestAnimationFrame(() => {
+                        const shell = document.getElementById('rp-player');
+                        if (shell && shell.getBoundingClientRect().height <= 0) {
+                            const wrap = shell.parentElement;
+                            if (wrap) shell.style.height = `${Math.round(wrap.clientWidth * 9 / 16)}px`;
+                        }
+                    });
+                } else {
+                    // Đổi tập: jwplayer().load() — cách origin.js tự dùng để
+                    // đổi nguồn (dòng 4091: load({ file, type, autostart })).
+                    // KHÔNG setup() lại / không nạp lại origin.js.
+                    const p = window.jwplayer('player');
+                    p.load({ file: data.m3u8, type: 'hls', autostart: true, tracks });
+                    p.play();
+                    if (!mountPlayerBrand()) startBrandPoller();
+                }
+            } catch (e) {
+                if (!cancelled && mountedRef.current && runId === runIdRef.current) {
+                    setPlayerError(e?.message || 'Không phát được tập này.');
+                }
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [currentEpisode, retryTick]);
+
     const handleChangeEpisode = (ep) => { setCurrentEpisode(ep); setSearchParams({ tap: ep.slug }); };
 
     // --- Sap xep / tim tap ---
@@ -328,15 +794,52 @@ const WatchMovie = () => {
                         <div className="relative w-full aspect-video bg-black md:rounded-xl overflow-hidden shadow-[0_0_50px_rgba(220,38,38,0.15)] ring-1 ring-white/10 md:ring-red-500/20 group z-20">
                             {currentEpisode ? (
                                 currentEpisode.link_embed ? (
-                                    <iframe
-                                        key={`${currentServer}-${currentEpisode.slug}`}
-                                        src={currentEpisode.link_embed}
-                                        title={`Xem ${movie.name} - Tập ${currentEpisode.name}`}
-                                        className="w-full h-full"
-                                        frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                    />
+                                    <>
+                                        {/* DOM đúng template-embed.html (origin.js cần):
+                                            #rp-player[data-hash] > .main-player > #player,
+                                            #video_mask, #bc-player-boot; #player_top là
+                                            sibling sau #rp-player. Chiều cao tường minh:
+                                            aspect-ratio inline trên chính #rp-player
+                                            (khung ngoài đã aspect-video) — không dùng
+                                            h-full (DEFECT-1 ở TestPlayer). */}
+                                        <div
+                                            id="rp-player"
+                                            className="bc-player-enter"
+                                            data-hash={extractVideoHash(currentEpisode.link_embed)}
+                                            style={{ aspectRatio: '16 / 9', height: 'auto', width: '100%' }}
+                                        >
+                                            <div className="main-player">
+                                                <div id="player" />
+                                            </div>
+                                            <div id="video_mask" />
+                                            <div className="bc-player-boot" id="bc-player-boot" role="status" aria-live="polite" aria-label="Loading">
+                                                <div className="bc-load">
+                                                    <svg className="bc-load-svg" viewBox="0 0 80 80" width="80" height="80" aria-hidden="true">
+                                                        <circle className="bc-load-track" cx="40" cy="40" r="34" fill="none" />
+                                                        <circle className="bc-load-arc" cx="40" cy="40" r="34" fill="none" pathLength="100" strokeDasharray="100" strokeDashoffset="100" />
+                                                    </svg>
+                                                    <div className="bc-load-pct">
+                                                        <span className="bc-load-num" id="bc-load-num">0</span><span className="bc-load-unit">%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="player_top" className="bc-chrome-enter">
+                                            <div className="p_t-left">
+                                                <div className="video-info">
+                                                    <div className="name">{movie.name} — Tập {currentEpisode.name}</div>
+                                                    <div className="info" />
+                                                </div>
+                                            </div>
+                                            <div className="p_t-right line-center gap-3" />
+                                        </div>
+                                        {playerError && (
+                                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/85 px-6 text-center">
+                                                <p className="text-sm text-gray-200">{playerError}</p>
+                                                <button onClick={() => setRetryTick((t) => t + 1)} className="rounded-full bg-[var(--accent)] px-5 py-2 text-xs font-bold text-white hover:bg-[var(--accent-hover)]">Thử lại</button>
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-gray-400 bg-gray-900 px-6 text-center"><p>Tập này chưa có link phát. Thử đổi server khác bên phải.</p></div>
                                 )
@@ -357,7 +860,7 @@ const WatchMovie = () => {
                         </div>
 
                         {!isLightOff && currentEpisode?.link_embed && (
-                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình nhúng ngoài — bấm “Tiếp theo” để chuyển tập. Tự chuyển tập, lưu vị trí xem và skip intro chưa hỗ trợ với dạng nhúng này.</p>
+                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình phát riêng — bấm “Tiếp theo” để chuyển tập. Nút “Bỏ qua giới thiệu”, chọn phụ đề và tốc độ nằm trong trình phát.</p>
                         )}
 
                         {!isLightOff && (

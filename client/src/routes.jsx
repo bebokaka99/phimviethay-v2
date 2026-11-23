@@ -33,9 +33,6 @@ const Intros = lazy(() => import("./pages/admin/Intros"));
 const PlayerSettings = lazy(() => import("./pages/admin/PlayerSettings"));
 const ViewsStats = lazy(() => import("./pages/admin/ViewsStats"));
 
-// Trang test riêng (không link từ menu/header) — chỉ vào trực tiếp bằng URL.
-const TestPlayer = lazy(() => import("./pages/TestPlayer"));
-
 // --- UTILS ---
 
 // 1. Loading Component khi chuyển trang
@@ -76,9 +73,6 @@ export const router = createBrowserRouter([
       { path: "/", element: Load(Home) },
       { path: "/phim/:slug", element: Load(MovieDetail) },
       { path: "/xem-phim/:slug", element: Load(WatchMovie) },
-
-      // Trang test JWPlayer (chỉ vào trực tiếp bằng URL, không link từ menu)
-      { path: "/test-player", element: Load(TestPlayer) },
 
       // Watch Party
       { path: "/watch-party", element: Load(WatchPartyLobby) },

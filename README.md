@@ -1,133 +1,144 @@
-# 🎥 PhimVietHay - Nền tảng Xem Phim Trực Tuyến Hiện Đại
+# PhimVietHay — Bundle 2026-11-24: Trang xem dùng player copy vsmov + logo to hơn 20%
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![React](https://img.shields.io/badge/Frontend-React_Vite-61DAFB?logo=react)
-![Node](https://img.shields.io/badge/Backend-Node.js_Express-339933?logo=nodedotjs)
-![Database](https://img.shields.io/badge/Database-TiDB_%2F_MySQL-4479A1?logo=mysql)
-![Style](https://img.shields.io/badge/Style-Tailwind_CSS-38B2AC?logo=tailwindcss)
+Bundle này áp dụng 2 commit local trên sandbox (chưa từng push GitHub):
 
-**PhimVietHay** là một ứng dụng web xem phim trực tuyến trọn gói (Full-stack) được xây dựng với MERN Stack (sử dụng TiDB làm cơ sở dữ liệu).  
-Dự án tập trung vào trải nghiệm người dùng mượt mà, giao diện Dark Mode hiện đại và tốc độ tải trang nhanh.
+- `4c3202d` — WatchMovie dùng player copy vsmov (origin.js v62 + player.css +
+  broadcast-player.css + JWPlayer 8.9.3), màu đỏ `#e50914`, logo 27px, xóa TestPlayer.
+- `fc0ac35` — Tăng logo control bar thêm 20% (27px → 32px desktop, 22px → 26px mobile).
 
----
+Repo local của bạn đang ở commit `32841be` trở lên — bundle này chỉ ghi đè
+10 file liệt kê ở mục 8, không đụng tới phần còn lại của repo.
+**KHÔNG push commit nào từ sandbox** — bạn tự commit + push sau khi áp bundle.
 
-## 🌟 Tính Năng Nổi Bật
+## 0. Bundle này tự đủ để build (không cần bundle khác)
 
-### 👤 Xác Thực & Người Dùng
-- Đăng nhập / Đăng ký bảo mật với **JWT (JSON Web Token)**  
-- Đăng nhập nhanh bằng **Google OAuth**  
-- **Auto Merge Account**: Tự động đồng bộ tài khoản nếu email trùng khớp  
-- Quản lý hồ sơ cá nhân, cập nhật **Avatar**  
+Bundle đã kèm sẵn 4 file của các task trước (xong 23/11, chưa push) vì
+`WatchMovie.jsx` và `routes.jsx` trong bundle import tới chúng — không có
+thì build lỗi `Could not resolve` / `Missing export`:
 
-### 🎬 Trải Nghiệm Xem Phim
-- Kho phim đa dạng: Phim Lẻ, Phim Bộ, TV Shows, Hoạt Hình  
-- Tìm kiếm thông minh với **Debounce** (giảm tải server)  
-- Bộ lọc theo **Quốc gia – Thể loại – Năm phát hành**  
-- Trình phát video mượt mà, hỗ trợ **server dự phòng**  
+- `client/src/components/movies/MovieRow.jsx` — phải có export
+  `SECTION_THEMES` (bản trên GitHub chỉ định nghĩa local, chưa export)
+- `client/src/services/adminService.js` — có export `getPlayerSettings`,
+  `updatePlayerSettings` (bản trên GitHub hiện chưa có 2 hàm này)
+- `client/src/pages/admin/PlayerSettings.jsx` +
+  `client/src/pages/admin/ViewsStats.jsx` — 2 trang admin `/admin/player`,
+  `/admin/views`
 
-### ❤️ Cá Nhân Hóa
-- Lưu phim **Yêu thích / Xem sau**  
-- Lưu **lịch sử xem & tiến độ phim**  
-- Bình luận, thảo luận và đánh giá phim (**Real-time**)  
+Đã kiểm chứng: bundle này áp lên `origin/main` (5a98545) build PASS.
 
-### 🛠️ Tính Năng Khác
-- Responsive hoàn toàn trên **Mobile – Tablet – Desktop**  
-- **Watch Party (Rạp phim online)** – đang phát triển  
-- **Admin Dashboard**: Quản lý phim, người dùng, thống kê  
+## 1. Cách áp dụng
 
----
+Đứng ở **thư mục gốc repo** PhimVietHay trên máy bạn rồi chạy:
 
-## 🚀 Công Nghệ Sử Dụng
-
-| Phần | Công Nghệ | Chi Tiết |
-| :--- | :--- | :--- |
-| **Frontend** | React (Vite) | Build nhanh, SPA |
-| | Tailwind CSS | UI, Responsive, Animation |
-| | React Router DOM | Điều hướng |
-| | Axios | HTTP Request |
-| **Backend** | Node.js / Express | REST API |
-| | Passport.js | Google OAuth |
-| | JWT | Authentication |
-| **Database** | TiDB Cloud | MySQL Compatible |
-| **Deploy** | Render / Vercel | Server & Client |
-
----
-
-## 🔧 Hướng Dẫn Cài Đặt (Localhost)
-
-### 1️⃣ Clone dự án
 ```bash
-git clone https://github.com/bebokaka99/phimviethay_git
-cd phimviethay
+tar -xzf phimviethay-2026-11-24-watchmovie-copy.tar.gz -C .
 ```
 
-### 2️⃣ Cấu hình Backend (Server)
+Lệnh này ghi đè đúng 10 file theo đường dẫn trong repo (không tạo thư mục thừa).
+
+## 2. File BẮT BUỘC phải xóa ở repo local
+
+2 file này đã bị xóa ở commit `4c3202d`, nhưng vì repo local của bạn đang ở
+`32841be` (cũ hơn) nên chúng vẫn còn — xóa tay:
+
 ```bash
-cd server
-npm install
+rm client/src/pages/TestPlayer.jsx client/src/pages/TestPlayer.css
 ```
 
-Tạo file `.env` trong thư mục `server/`:
-```env
-PORT=5000
+Sau khi xóa, route `/test-player` không còn tồn tại (truy cập sẽ ra trang 404) —
+đây là hành vi đúng theo thiết kế mới, trang xem chính đã thay thế nó.
 
-# Database (TiDB / MySQL)
-DB_HOST=your_tidb_host
-DB_PORT=4000
-DB_USER=your_db_user
-DB_PASS=your_db_pass
-DB_NAME=test
+> Lưu ý: 2 file `client/src/pages/playerLogic.js` và
+> `client/public/jwplayer/vsmov-pom.css` CHỈ tồn tại ở sandbox, chưa từng lên
+> GitHub nên repo của bạn KHÔNG có chúng — không cần xóa gì thêm.
 
-# Security
-JWT_SECRET=ma_bi_mat_jwt
-ACCESS_TOKEN_SECRET=ma_bi_mat_access
-REFRESH_TOKEN_SECRET=ma_bi_mat_refresh
+## 3. Kiểm tra nhanh sau khi giải nén
 
-# Client URL
-CLIENT_URL=http://localhost:5173
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
-```
-
-Chạy server:
 ```bash
-npm run dev
+ls client/public/jwplayer/
+# phải thấy: origin.js, player.css, broadcast-player.css, jwplayer-8.9.3.js
+
+ls client/src/pages/TestPlayer.jsx client/src/pages/TestPlayer.css
+# phải báo "No such file or directory" (đã xóa xong ở bước 2)
 ```
 
-### 3️⃣ Cấu hình Frontend (Client)
+## 4. Build thử
+
 ```bash
 cd client
-npm install
+npm run build
 ```
 
-Tạo file `.env` trong `client/`:
-```env
-VITE_API_URL=http://localhost:5000
+Build phải PASS rồi mới commit/push và deploy.
+
+## 5. KHÔNG cần sửa `.env.production`
+
+Cloudflare Pages của bạn đã được sửa tay để trỏ đúng backend v2
+(`VITE_API_URL=https://phimviethay-p45m.onrender.com/api`) nên bundle này
+không đụng tới file env nào. Đừng sửa lại `.env.production` trong repo.
+
+## 6. Chỉnh cỡ logo control bar (nếu muốn to/nhỏ hơn nữa)
+
+File: `client/public/jwplayer/broadcast-player.css`,
+rule `.b_func .vsmov-player-brand img`:
+
+- **Desktop — dòng ~897** (rule bắt đầu dòng 897, `height` ở dòng 899):
+
+```css
+.b_func .vsmov-player-brand img {
+  display: block;
+  height: 32px;
+  width: auto;
+  max-width: 130px;
+  ...
+}
 ```
 
-Chạy client:
-```bash
-npm run dev
+- **Mobile — dòng ~984**, nằm trong `@media screen and (max-width: 640px)`
+  (dòng 975):
+
+```css
+  .b_func .vsmov-player-brand img {
+    height: 26px;
+    max-width: 106px;
+  }
 ```
 
-👉 Truy cập: **http://localhost:5173** 🍿
+Ví dụ muốn to hơn nữa (vd 38px desktop): tăng **cả `height` và `max-width`
+cùng tỉ lệ** (vd `height: 38px; max-width: 154px;`), nhớ giữ `max-width` lớn
+hơn chiều rộng thật của logo để logo không bị bóp ngang. Làm tương tự cho
+bản mobile.
 
----
+> ⚠️ CẢNH BÁO — đừng nhầm: dòng **645** trong cùng file có
+> `height: 26px !important;` nhưng đó là rule KHÁC (nút display icon
+> `.jw-display-icon-display::after`), KHÔNG phải logo. Chỉ sửa 2 rule
+> `.b_func .vsmov-player-brand img` ở trên.
 
-## 🤝 Đóng Góp (Contributing)
+Kích thước đo thật sau khi tăng 20%: desktop 85,2×32px (trước 71,9×27px),
+mobile 69,2×26px (trước 58,5×22px).
 
-1. Fork dự án  
-2. Tạo branch mới: `git checkout -b feature/TinhNangMoi`  
-3. Commit: `git commit -m "Thêm tính năng X"`  
-4. Push: `git push origin feature/TinhNangMoi`  
-5. Tạo Pull Request  
+## 7. Lưu ý nhỏ về màu player
 
----
+Màu nhấn mặc định của player bây giờ là đỏ `#e50914` (đã đổi hết `#f97316`
+trong 3 file copy). Tuy nhiên, user nào trước đây đã lưu
+`localStorage` `bc_player_chrome_color=#f97316` thì trình duyệt của họ vẫn
+giữ màu cam cũ — chỉ người mới (chưa từng lưu) mới mặc định đỏ. Đây là hành
+vi cố ý giữ lại, không phải lỗi.
 
-## 📄 Bản Quyền
-Dự án được phát triển cho mục đích **học tập & phi lợi nhuận**.
+## 8. Nội dung bundle (10 file + README này)
 
----
+| File | Nội dung |
+| --- | --- |
+| `client/public/jwplayer/origin.js` | Logic player copy từ vsmov (v62), đã gỡ tracking GA + embed-hit |
+| `client/public/jwplayer/player.css` | CSS player vsmov, màu nhấn đổi sang đỏ `#e50914` |
+| `client/public/jwplayer/broadcast-player.css` | CSS control bar vsmov, logo 32px desktop / 26px mobile |
+| `client/public/jwplayer/jwplayer-8.9.3.js` | JWPlayer 8.9.3 (key lấy từ `/api/player-key`) |
+| `client/src/pages/WatchMovie.jsx` | Trang xem chính: bỏ iframe, dùng player copy vsmov |
+| `client/src/routes.jsx` | Gỡ route `/test-player` |
+| `client/src/components/movies/MovieRow.jsx` | Thêm export `SECTION_THEMES` (task custom UI) |
+| `client/src/services/adminService.js` | Thêm `getPlayerSettings`, `updatePlayerSettings` (task admin-vsphim) |
+| `client/src/pages/admin/PlayerSettings.jsx` | Trang admin `/admin/player` (task admin-vsphim) |
+| `client/src/pages/admin/ViewsStats.jsx` | Trang admin `/admin/views` (task admin-vsphim) |
+
+Các file bị xóa ở commit `4c3202d` (`TestPlayer.jsx`, `TestPlayer.css`,
+`playerLogic.js`, `vsmov-pom.css`) không có mặt trong bundle — xem bước 2.
