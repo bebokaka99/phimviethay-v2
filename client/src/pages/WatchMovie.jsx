@@ -109,7 +109,7 @@ Selector kép (con .jwplayer + #rp-player) vì fullscreen có thể re-parent
 overlay sang #rp-player (bcMountDualOverlayHost). */
 .jwplayer .bc-dual-subs,
 #rp-player .bc-dual-subs {
-  bottom: 14% !important;
+  bottom: 8% !important;
 }
 @media screen and (max-width: 980px) {
   .jwplayer .bc-dual-subs,
@@ -268,7 +268,7 @@ const startBootController = () => {
     const boot = document.getElementById('bc-player-boot');
     const numEl = document.getElementById('bc-load-num');
     const shell = document.getElementById('rp-player');
-    if (!boot || !numEl) return () => {};
+    if (!boot || !numEl) return () => { };
     const arcEl = boot.querySelector('.bc-load-arc');
     if (shell) shell.classList.add('bc-booting');
     let display = 0;
@@ -323,7 +323,7 @@ const startBootController = () => {
         try {
             const p = window.jwplayer && window.jwplayer('player');
             if (p && typeof p.play === 'function') p.play(true);
-        } catch (e) {}
+        } catch (e) { }
     };
     boot.addEventListener('click', onBootClick);
     let bootTries = 0;
@@ -499,7 +499,7 @@ const WatchMovie = () => {
                 // (data-bs-toggle). Lỗi thì shim no-op để `new bootstrap.Tooltip`
                 // trong origin.js (dòng 3365) không throw.
                 try { await loadScript(BOOTSTRAP_JS, 'phimviethay-bootstrap'); }
-                catch (e) { if (!window.bootstrap) window.bootstrap = { Tooltip: function () {}, Dropdown: function () {} }; }
+                catch (e) { if (!window.bootstrap) window.bootstrap = { Tooltip: function () { }, Dropdown: function () { } }; }
                 const r = await fetch(ORIGIN_JS);
                 if (!r.ok) throw new Error(`Không tải được origin.js (HTTP ${r.status}).`);
                 const text = await r.text();
@@ -595,7 +595,7 @@ const WatchMovie = () => {
     const [relatedSectionRef, relatedVisible] = useOnScreen(LAZY_OPTS);
     const [relatedLoaded, setRelatedLoaded] = useState(false);
 
-    useEffect(() => { try { localStorage.setItem('ep_sort_order', epSort); } catch (e) {} }, [epSort]);
+    useEffect(() => { try { localStorage.setItem('ep_sort_order', epSort); } catch (e) { } }, [epSort]);
     // Doi server / doi phim -> cua so ve dau danh sach
     useEffect(() => { setEpWinStart(0); setEpWinCount(EP_PAGE); setEpSearchMsg(''); }, [currentServer, slug]);
 
@@ -635,7 +635,7 @@ const WatchMovie = () => {
 
                     // Phu: chay nen, khong chan trinh phat
                     getMoviePeoples(slug).then(res => setCasts(res || []));
-                    checkFavoriteStatus(data.movie.slug).then(setIsFavorite).catch(() => {});
+                    checkFavoriteStatus(data.movie.slug).then(setIsFavorite).catch(() => { });
                 }
             } catch (error) { console.error(error); } finally { setLoading(false); }
         };
@@ -655,7 +655,7 @@ const WatchMovie = () => {
             if (relatedData?.data?.items) {
                 setRelatedMovies(relatedData.data.items.filter(m => m.slug !== movie.slug).sort(() => Math.random() - 0.5));
             }
-        }).catch(() => {});
+        }).catch(() => { });
     }, [relatedVisible, movie, relatedLoaded]);
 
     useEffect(() => {
@@ -688,7 +688,7 @@ const WatchMovie = () => {
             const currentEpName = currentEpisode.name;
             const newServerData = episodes[currentServer]?.server_data;
             if (!newServerData || newServerData.length === 0) return;
-            
+
             let foundEp = newServerData.find(e => e.name === currentEpName);
             if (!foundEp) {
                 // Fallback tìm theo slug nếu name khác
@@ -722,7 +722,7 @@ const WatchMovie = () => {
             try {
                 const p = window.jwplayer && window.jwplayer('player');
                 if (p && typeof p.remove === 'function') p.remove();
-            } catch (e) {}
+            } catch (e) { }
             if (brandTimerRef.current) { clearInterval(brandTimerRef.current); brandTimerRef.current = null; }
             if (dropupTimerRef.current) { clearInterval(dropupTimerRef.current); dropupTimerRef.current = null; }
             if (menuFixCleanupRef.current) { menuFixCleanupRef.current(); menuFixCleanupRef.current = null; }
@@ -763,7 +763,7 @@ const WatchMovie = () => {
                     const l = document.createElement('link');
                     l.rel = 'preload'; l.as = 'fetch'; l.href = data.m3u8; l.crossOrigin = 'anonymous';
                     document.head.appendChild(l);
-                } catch (e) {}
+                } catch (e) { }
                 const tracks = [{ file: '', kind: 'thumbnails' }, ...mapSubtitleTracks(subs)];
                 if (!originExecutedRef.current) {
                     if (!document.getElementById('rp-player') || !document.getElementById('player')) return;
@@ -787,7 +787,7 @@ const WatchMovie = () => {
                         // cờ để nút "Thử lại" chạy lại toàn bộ setup thay vì
                         // load() trên player đã hỏng (load() sẽ lỗi tiếp).
                         originExecutedRef.current = false;
-                        try { p.remove(); } catch (err) {}
+                        try { p.remove(); } catch (err) { }
                         if (mountedRef.current) setPlayerError(`Không khởi tạo được trình phát${e?.code ? ` (${e.code})` : ''}: ${e?.message || 'lỗi không rõ'}.`);
                     });
                     // DEFECT-1 (chỉ thuộc TestPlayer, đề phòng tái diễn):
