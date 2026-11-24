@@ -803,9 +803,13 @@ const arrayColor = [
   },
 ];
 
-/** Mobile/iOS: giữ bộ cỡ chi tiết */
+/** Mobile/iOS: giữ bộ cỡ chi tiết (thêm 35/30/25 ngày 24/11/2026 theo yêu
+cầu user — 20 đã có sẵn) */
 const arraySizeMobile = [
+  { label: '35pt', size: '35' },
   { label: '32pt', size: '32' },
+  { label: '30pt', size: '30' },
+  { label: '25pt', size: '25' },
   { label: '24pt', size: '24' },
   { label: '20pt', size: '20' },
   { label: '18pt', size: '18' },
@@ -814,12 +818,17 @@ const arraySizeMobile = [
   { label: '12pt', size: '12' },
 ];
 
-/** PC: bỏ 24/32 — 40 · 48 · 56 · 64 */
+/** PC: 20 · 25 · 30 · 35 · 40 · 48 · 56 · 64 (thêm 20/25/30/35 ngày
+24/11/2026 theo yêu cầu user — trước đây nhỏ nhất là 40) */
 const arraySizeDesktop = [
   { label: '64pt', size: '64' },
   { label: '56pt', size: '56' },
   { label: '48pt', size: '48' },
   { label: '40pt', size: '40' },
+  { label: '35pt', size: '35' },
+  { label: '30pt', size: '30' },
+  { label: '25pt', size: '25' },
+  { label: '20pt', size: '20' },
 ];
 
 /** @deprecated dùng bcCaptionSizeOptions() — giữ alias để không vỡ chỗ cũ */
@@ -1922,7 +1931,7 @@ function bcPlayerBoxSize() {
 }
 
 function bcDualFontSizes() {
-  // Overlay: PC luôn bám setting (40–64); mobile có trần riêng; không ép PC embed về 28px
+  // Overlay: PC luôn bám setting (20–64); mobile có trần riêng; không ép PC embed về 28px
   const jwSize = bcNativeCueUserFontPt();
   const box = bcPlayerBoxSize();
   const mobile = bcIsMobilePlayerLayout() || bcIsIosLikeDevice();
@@ -1952,13 +1961,15 @@ function bcDualFontSizes() {
     }
     primary = Math.round(Math.max(13, Math.min(cap, primary)));
   } else {
-    // Desktop (cửa sổ / embed / fullscreen): đúng menu 40–64
-    primary = Math.round(Math.max(36, Math.min(72, jwSize || 40)));
+    // Desktop (cửa sổ / embed / fullscreen): đúng menu 20–64 (floor 20 từ
+    // 24/11/2026 — trước đây floor 36 nên các cỡ 20/25/30/35 chọn được nhưng
+    // không có tác dụng, đều bị kẹp về 36)
+    primary = Math.round(Math.max(20, Math.min(72, jwSize || 40)));
     // Hộp rất thấp (thumbnail): co vừa đủ đọc, vẫn phân biệt các bậc size
     if (!fullscreen && h > 0 && h < 240) {
       const scale = Math.max(0.55, Math.min(1, h / 360));
       primary = Math.round(
-        Math.max(28, Math.min(primary, primary * scale))
+        Math.max(20, Math.min(primary, primary * scale))
       );
     }
   }

@@ -88,37 +88,60 @@ khi controls hiện — player.css:2842.) */
     max-height: calc(100% - 100px) !important;
   }
 }
-/* Fix 1b (24/11/2026) — sub ĐÈ control bar, renderer THẬT là overlay riêng
-.bc-dual-subs (origin.js mặc định gọi bcSetSingleSubtitleOverlay(true):
-"1 ngôn ngữ qua overlay — không phụ thuộc JW caption engine"; JW caption
-bị set 0 + ẩn bởi .bc-dual-hide-jw). Overlay có bottom:14% (player.css:2497,
-desktop 493px ≈ 69px) + z-index:35, chữ 40px mặc định (JS clamp 36–72px,
-origin.js bcDualFontSizes) — mép dưới overlay thấp hơn thanh control cao
-113px nên sub đè lên progress bar + nút (đo thật: overlay bottom 556.3,
-control bar top 512.3, chồng 43.9px). Nâng đáy overlay vượt hết thanh
-control CHỈ khi controls đang hiện (state-aware): controls tự ẩn thì rule
-8% gốc (player.css:2811) vẫn áp dụng, sub trở lại sát đáy, không lơ lửng.
-Selector kép (con .jwplayer + :has trên #rp-player) vì fullscreen có thể
-re-parent overlay sang #rp-player (bcMountDualOverlayHost). */
-.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .bc-dual-subs,
-#rp-player:has(.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden)) .bc-dual-subs,
-.jwplayer:not(.jw-state-playing) .bc-dual-subs,
-#rp-player:has(.jwplayer:not(.jw-state-playing)) .bc-dual-subs {
-  bottom: max(14%, 150px) !important;
+/* Fix 1b (24/11/2026, sửa 24/11/2026 theo vị trí gốc vsmov) — sub ĐÈ control
+bar, renderer THẬT là overlay riêng .bc-dual-subs (origin.js mặc định gọi
+bcSetSingleSubtitleOverlay(true)). VỊ TRÍ = ĐÚNG VỊ TRÍ GỐC CỦA VSMOV (user
+chốt 24/11/2026 ~19:16, sau khi xem ảnh kiểm chứng: sub phải nằm TRONG vùng
+control bar, sát đáy player, không lơ lửng phía trên): bottom 14% desktop,
+16% mobile/tablet (≤980px), 12% fullscreen — đúng các rule gốc trong
+player.css:2497 (14%), :2813–2820 (16% ≤980px), :2670–2676 (12% FS).
+ĐO THẬT player gốc (24/11/2026, phim hoc-tai-thi-ho): desktop player
+877×493, controls hiện → bottom 69px = 14.0% (CSS compute 69.06px), sub
+spanning 69–183px từ đáy; control bar cao 113px, progress/slider ở 76–92px,
+nút bấm ở 20–60px (DƯỚI đáy sub 69px → không chồng nút); controls ẩn gốc
+tụt về 8% (39px). Mobile 390×219 → bottom 35px = 16.0%, bar 58px, nút
+18–54px. BỎ hướng cũ "đáy = chiều cao control bar + khe hở" (120px/66px,
+đính chính ~17:56) vì đẩy sub lên cao, nhìn như nổi giữa video.
+MỘT giá trị cho MỌI trạng thái (playing/paused/controls hiện/ẩn/menu mở) —
+sub KHÔNG nhảy lên/xuống khi control bar hiện/ẩn, không tụt về 8% gốc
+(player.css:2811) khi hết timeout không di chuột.
+Selector kép (con .jwplayer + #rp-player) vì fullscreen có thể re-parent
+overlay sang #rp-player (bcMountDualOverlayHost). */
+.jwplayer .bc-dual-subs,
+#rp-player .bc-dual-subs {
+  bottom: 14% !important;
 }
-@media screen and (max-width: 640px) {
-  .jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .bc-dual-subs,
-  #rp-player:has(.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden)) .bc-dual-subs,
-  .jwplayer:not(.jw-state-playing) .bc-dual-subs,
-  #rp-player:has(.jwplayer:not(.jw-state-playing)) .bc-dual-subs {
-    bottom: max(16%, 70px) !important;
+@media screen and (max-width: 980px) {
+  .jwplayer .bc-dual-subs,
+  #rp-player .bc-dual-subs {
+    bottom: 16% !important;
   }
 }
-/* Fix 1c (24/11/2026) — overlay z-index 35 vẽ ĐÈ lên panel setting khi menu
-mở (menu nằm trong .jw-controlbar). Ẩn overlay trong lúc bất kỳ dropdown
-player nào đang mở (.show của Bootstrap); đóng menu là sub hiện lại. */
-#rp-player:has(.b_func .dropdown-menu.show) .bc-dual-subs {
-  visibility: hidden !important;
+/* Fullscreen: giữ đúng 12% gốc (player.css:2670–2676), không để 14% đè lên.
+Lưu ý: khi fullscreen, overlay được re-parent sang #rp-player
+(bcMountDualOverlayHost) nên selector .jwplayer.jw-flag-fullscreen KHÔNG khớp
+overlay — phải bắt trạng thái fullscreen bằng :has() từ class trên .jwplayer
+con bên trong #rp-player. */
+#rp-player:has(.jwplayer.jw-flag-fullscreen) .bc-dual-subs,
+#rp-player:has(.jwplayer.bc-css-fs-player) .bc-dual-subs,
+#rp-player:has(.jwplayer:fullscreen) .bc-dual-subs,
+:fullscreen .bc-dual-subs {
+  bottom: max(12%, env(safe-area-inset-bottom, 0px) + 8%) !important;
+}
+/* Fix 1d (24/11/2026) — z-order (đính chính user 24/11/2026: sub nằm DƯỚI
+control bar + panel, KHÔNG vẽ đè lên nút nào — sub đè control bar chính là
+lỗi 1 ban đầu). Overlay z-index 35 (player.css:2502) vẽ ĐÈ cả cây controlbar
+(z 20, player.css:2301) vì cùng stacking context .jwplayer (container-type:
+size); panel (z 1000) kẹt trong stacking context của controlbar nên chỉ hạ
+overlay xuống dưới 20 mới đủ — tăng z-index panel KHÔNG có tác dụng. z 15:
+vẫn trên video + mọi lớp JW khác trong .jwplayer (≤3, broadcast-player.css)
+và dưới controlbar (20) ở mọi trạng thái; fullscreen cũng vậy (controlbar
+FS 2147483640, panel FS 2147483646, player.css:2716–2730). Sub chỉ hiện ở
+phần không bị panel che — đúng kiểu YouTube (panel mở bên phải, sub căn
+giữa vẫn thấy). */
+.jwplayer .bc-dual-subs,
+#rp-player .bc-dual-subs {
+  z-index: 15 !important;
 }
 /* Fix 2+4 (24/11/2026) — panel phụ đề/cài đặt là Bootstrap dropdown mở
 xuống dưới rồi bị #rp-player{overflow:hidden} cắt; .player-dm gốc chỉ có
