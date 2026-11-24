@@ -109,7 +109,7 @@ Selector kép (con .jwplayer + #rp-player) vì fullscreen có thể re-parent
 overlay sang #rp-player (bcMountDualOverlayHost). */
 .jwplayer .bc-dual-subs,
 #rp-player .bc-dual-subs {
-  bottom: 8% !important;
+  bottom: 2% !important;
 }
 @media screen and (max-width: 980px) {
   .jwplayer .bc-dual-subs,
