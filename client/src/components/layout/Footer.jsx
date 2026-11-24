@@ -32,11 +32,11 @@ const Footer = () => {
             <div>
                 <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Khám phá</h3>
                 <ul className="space-y-3 text-xs font-medium">
-                    <li><a href="/danh-sach/phim-moi" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim chiếu rạp mới</a></li>
+                    <li><a href="/danh-sach/phim-chieu-rap" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim chiếu rạp mới</a></li>
                     <li><a href="/danh-sach/phim-bo" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim bộ độc quyền</a></li>
-                    <li><a href="/danh-sach/phim-le" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim lẻ hành động</a></li>
-                    <li><a href="/danh-sach/tv-shows" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> TV Shows hấp dẫn</a></li>
-                    <li><a href="/danh-sach/hoat-hinh" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Anime & Hoạt hình</a></li>
+                    <li><a href="/the-loai/hanh-dong" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Phim lẻ hành động</a></li>
+                    <li><a href="/danh-sach/phim-bo" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> TV Shows hấp dẫn</a></li>
+                    <li><a href="/the-loai/hoat-hinh" className="hover:text-[var(--accent)] transition-colors flex items-center gap-2 group"><span className="w-1 h-1 bg-gray-600 rounded-full group-hover:bg-[var(--accent)] transition-colors"></span> Anime & Hoạt hình</a></li>
                 </ul>
             </div>
 
@@ -44,6 +44,7 @@ const Footer = () => {
             <div>
                 <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Hỗ trợ</h3>
                 <ul className="space-y-3 text-xs font-medium">
+                    <li><a href="/gioi-thieu" className="hover:text-white transition-colors">Giới thiệu</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">Điều khoản sử dụng</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a></li>
                     <li><a href="#" className="hover:text-white transition-colors">Khiếu nại bản quyền</a></li>
@@ -57,9 +58,9 @@ const Footer = () => {
                 <h3 className="text-white font-bold uppercase text-xs tracking-widest mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-8 after:h-0.5 after:bg-[var(--accent)]">Từ khóa hot</h3>
                 <div className="flex flex-wrap gap-2">
                     {['Hành động', 'Marvel', 'Hàn Quốc', 'Anime', 'Kinh dị', 'Netflix', 'Hài hước', 'Tình cảm', 'Học đường', 'DC'].map(tag => (
-                        <span key={tag} className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 hover:text-white hover:bg-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-all duration-300">
+                        <a key={tag} href={`/tim-kiem?keyword=${encodeURIComponent(tag)}`} className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-400 hover:text-white hover:bg-[var(--accent)] hover:border-[var(--accent)] cursor-pointer transition-all duration-300">
                             #{tag}
-                        </span>
+                        </a>
                     ))}
                 </div>
             </div>
@@ -67,8 +68,8 @@ const Footer = () => {
 
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 opacity-60 hover:opacity-100 transition-opacity">
             <p className="text-[10px] text-gray-500">Copyright © 2026 PhimVietHay. All rights reserved.</p>
-            <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                
+            <p className="text-center md:text-right text-[10px] md:text-xs leading-5 text-gray-500">
+                Nội dung được tổng hợp từ các nguồn công khai. Chúng tôi không lưu trữ bất kỳ tệp bản quyền nào trên máy chủ.
             </p>
         </div>
       </div>

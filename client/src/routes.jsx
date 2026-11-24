@@ -12,6 +12,7 @@ const MovieDetail = lazy(() => import("./pages/MovieDetail"));
 const WatchMovie = lazy(() => import("./pages/WatchMovie"));
 const SearchPage = lazy(() => import("./pages/SearchPage"));
 const Catalog = lazy(() => import("./pages/Catalog"));
+const About = lazy(() => import("./pages/About"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Auth & User
@@ -88,6 +89,9 @@ export const router = createBrowserRouter([
       { path: "/the-loai", element: <Suspense fallback={<LoadingFallback />}><Catalog group="danh-sach" /></Suspense> },
       { path: "/quoc-gia", element: <Suspense fallback={<LoadingFallback />}><Catalog group="danh-sach" /></Suspense> },
       { path: "/danh-sach", element: <Suspense fallback={<LoadingFallback />}><Catalog group="danh-sach" /></Suspense> },
+
+      // Trang tĩnh
+      { path: "/gioi-thieu", element: Load(About) },
 
       // User Protected Routes
       { 

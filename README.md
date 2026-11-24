@@ -1,144 +1,110 @@
-# PhimVietHay — Bundle 2026-11-24: Trang xem dùng player copy vsmov + logo to hơn 20%
+# PhimVietHay — Bundle Footer + About + 4 lỗi player
 
-Bundle này áp dụng 2 commit local trên sandbox (chưa từng push GitHub):
+Ngày đóng: 24/11/2026. Bundle này gộp 3 phần đã làm xong trên sandbox
+(commit local `f3e727e` + `ef192cc` + `cd9fd64`).
 
-- `4c3202d` — WatchMovie dùng player copy vsmov (origin.js v62 + player.css +
-  broadcast-player.css + JWPlayer 8.9.3), màu đỏ `#e50914`, logo 27px, xóa TestPlayer.
-- `fc0ac35` — Tăng logo control bar thêm 20% (27px → 32px desktop, 22px → 26px mobile).
+## Bundle này GỒM
 
-Repo local của bạn đang ở commit `32841be` trở lên — bundle này chỉ ghi đè
-10 file liệt kê ở mục 8, không đụng tới phần còn lại của repo.
-**KHÔNG push commit nào từ sandbox** — bạn tự commit + push sau khi áp bundle.
+1. **Footer** (`client/src/components/layout/Footer.jsx`)
+   - Disclaimer bản quyền đặt ngang hàng với dòng copyright
+     (desktop trái/phải, mobile tự xuống dòng).
+   - Link cột "Khám phá" map đúng route thật của web
+     (phim chiếu rạp, phim bộ, phim lẻ hành động, TV Shows, anime).
+   - Link "Giới thiệu" đã gỡ chấm tròn thừa.
+   - 10 chip "Từ khóa hot" bấm vào ra trang tìm kiếm
+     (`/tim-kiem?keyword=...`).
+2. **Trang Giới thiệu** (`client/src/pages/About.jsx`,
+   `client/src/routes.jsx` — route `/gioi-thieu`,
+   `client/public/about/` — 6 ảnh minh họa: home, search, catalog,
+   favorites, history, profile)
+   - Đủ 5 mục nội dung + mục "Xem trước giao diện" (6 ảnh chụp thật)
+     + Q&A accordion 6 câu cuối trang.
+3. **Sửa 4 lỗi player** (`client/src/pages/WatchMovie.jsx`, +128 dòng)
+   - Phụ đề không còn đè lên thanh control bar.
+   - Panel phụ đề và bảng Cài đặt cuộn được, không bị cắt
+     (thấy được mục "Độ trong nền").
+   - Mobile: không còn lớp phủ đen chặn chạm — chạm vào player
+     ẩn/hiện control bar bình thường.
+   - Bảng Cài đặt mở lên trên (dropup), không tuột xuống dưới
+     khung player nữa.
 
-## 0. Bundle này tự đủ để build (không cần bundle khác)
+## Cách áp dụng (trên máy Windows, repo phimviethay-v2)
 
-Bundle đã kèm sẵn 4 file của các task trước (xong 23/11, chưa push) vì
-`WatchMovie.jsx` và `routes.jsx` trong bundle import tới chúng — không có
-thì build lỗi `Could not resolve` / `Missing export`:
+> ⚠️ LƯU Ý QUAN TRỌNG — KHÔNG giải nén toàn bộ nếu repo của bạn mới hơn
+> ở file khác: bundle này CHỈ được phép ghi đè đúng các file liệt kê
+> ở mục "Danh sách file trong bundle" bên dưới. Các file khác trong repo
+> của bạn (custom UI, admin, theme...) KHÔNG nằm trong bundle này và
+> không được đụng tới.
 
-- `client/src/components/movies/MovieRow.jsx` — phải có export
-  `SECTION_THEMES` (bản trên GitHub chỉ định nghĩa local, chưa export)
-- `client/src/services/adminService.js` — có export `getPlayerSettings`,
-  `updatePlayerSettings` (bản trên GitHub hiện chưa có 2 hàm này)
-- `client/src/pages/admin/PlayerSettings.jsx` +
-  `client/src/pages/admin/ViewsStats.jsx` — 2 trang admin `/admin/player`,
-  `/admin/views`
+1. Giải nén file `.tar.gz` này đè lên **gốc repo** (thư mục chứa
+   `client/` và `server/`), sao cho các file trong bundle thay thế
+   đúng các file cùng đường dẫn trong repo. Nếu dùng 7-Zip: mở file
+   `.tar.gz` 2 lần (lần 1 ra `.tar`, lần 2 ra thư mục), rồi copy
+   đè các file vào repo.
+2. Kiểm tra `git status` — chỉ được thấy đúng các file liệt kê
+   bên dưới thay đổi. Nếu thấy file khác thay đổi, DỪNG LẠI và
+   kiểm tra trước khi commit.
+3. Build thử:
+   ```
+   cd client
+   npm run build
+   ```
+   Build phải PASS, không lỗi.
+4. Commit + push lên GitHub (repo phimviethay-v2), Cloudflare Pages
+   tự deploy lại. Không cần đổi `.env` — env Cloudflare Pages
+   đã trỏ đúng backend v2.
+5. **Trước khi test lại player:** xóa cache trình duyệt và
+   unregister service worker cũ (DevTools → Application →
+   Service Workers → Unregister, rồi tải lại trang). Service worker
+   bản build cũ có thể phục vụ chunk JS cũ khiến bạn vẫn thấy lỗi cũ
+   dù code mới đã deploy.
 
-Đã kiểm chứng: bundle này áp lên `origin/main` (5a98545) build PASS.
+## Checklist test nhanh (sau khi deploy)
 
-## 1. Cách áp dụng
+### Player — mở 1 phim bất kỳ (vd "Trò Chơi Vương Quyền - Phần 6" Tập 1)
+- [ ] Phụ đề (sub) KHÔNG đè lên thanh control bar khi controls hiện.
+- [ ] Mở panel phụ đề, cuộn xuống cuối thấy được mục "Độ trong nền"
+      (không bị cắt, cuộn được).
+- [ ] Mobile (điện thoại thật): chạm vào vùng giữa player thì
+      control bar ẩn/hiện bình thường, không có vùng nào chạm không ăn.
+- [ ] Mở bảng Cài đặt (bánh răng): bảng mở LÊN TRÊN khung player,
+      bấm được đầy đủ các mục, không tuột xuống dưới.
 
-Đứng ở **thư mục gốc repo** PhimVietHay trên máy bạn rồi chạy:
+### Footer (mọi trang)
+- [ ] Dòng disclaimer bản quyền nằm ngang hàng với dòng copyright
+      (desktop), mobile tự xuống dòng gọn gàng.
+- [ ] Link cột "Khám phá" bấm vào ra đúng trang (chiếu rạp / phim bộ /
+      phim lẻ hành động / TV Shows / anime).
+- [ ] 10 chip "Từ khóa hot" bấm vào ra trang tìm kiếm với đúng từ khóa.
 
-```bash
-tar -xzf phimviethay-2026-11-24-watchmovie-copy.tar.gz -C .
+### Trang Giới thiệu — mở `/gioi-thieu`
+- [ ] Đủ 5 mục nội dung + mục "Xem trước giao diện" hiển thị đủ 6 ảnh.
+- [ ] Q&A accordion 6 câu cuối trang bấm mở/đóng được.
+
+## Danh sách file trong bundle
+
+```
+README.md
+client/src/components/layout/Footer.jsx
+client/src/pages/About.jsx
+client/src/routes.jsx
+client/src/pages/WatchMovie.jsx
+client/public/about/home.png
+client/public/about/search.png
+client/public/about/catalog.png
+client/public/about/favorites.png
+client/public/about/history.png
+client/public/about/profile.png
 ```
 
-Lệnh này ghi đè đúng 10 file theo đường dẫn trong repo (không tạo thư mục thừa).
+Tổng: 11 file (README + 4 file code + 6 ảnh).
 
-## 2. File BẮT BUỘC phải xóa ở repo local
+## Lưu ý nhỏ còn tồn (không nằm trong bundle này)
 
-2 file này đã bị xóa ở commit `4c3202d`, nhưng vì repo local của bạn đang ở
-`32841be` (cũ hơn) nên chúng vẫn còn — xóa tay:
-
-```bash
-rm client/src/pages/TestPlayer.jsx client/src/pages/TestPlayer.css
-```
-
-Sau khi xóa, route `/test-player` không còn tồn tại (truy cập sẽ ra trang 404) —
-đây là hành vi đúng theo thiết kế mới, trang xem chính đã thay thế nó.
-
-> Lưu ý: 2 file `client/src/pages/playerLogic.js` và
-> `client/public/jwplayer/vsmov-pom.css` CHỈ tồn tại ở sandbox, chưa từng lên
-> GitHub nên repo của bạn KHÔNG có chúng — không cần xóa gì thêm.
-
-## 3. Kiểm tra nhanh sau khi giải nén
-
-```bash
-ls client/public/jwplayer/
-# phải thấy: origin.js, player.css, broadcast-player.css, jwplayer-8.9.3.js
-
-ls client/src/pages/TestPlayer.jsx client/src/pages/TestPlayer.css
-# phải báo "No such file or directory" (đã xóa xong ở bước 2)
-```
-
-## 4. Build thử
-
-```bash
-cd client
-npm run build
-```
-
-Build phải PASS rồi mới commit/push và deploy.
-
-## 5. KHÔNG cần sửa `.env.production`
-
-Cloudflare Pages của bạn đã được sửa tay để trỏ đúng backend v2
-(`VITE_API_URL=https://phimviethay-p45m.onrender.com/api`) nên bundle này
-không đụng tới file env nào. Đừng sửa lại `.env.production` trong repo.
-
-## 6. Chỉnh cỡ logo control bar (nếu muốn to/nhỏ hơn nữa)
-
-File: `client/public/jwplayer/broadcast-player.css`,
-rule `.b_func .vsmov-player-brand img`:
-
-- **Desktop — dòng ~897** (rule bắt đầu dòng 897, `height` ở dòng 899):
-
-```css
-.b_func .vsmov-player-brand img {
-  display: block;
-  height: 32px;
-  width: auto;
-  max-width: 130px;
-  ...
-}
-```
-
-- **Mobile — dòng ~984**, nằm trong `@media screen and (max-width: 640px)`
-  (dòng 975):
-
-```css
-  .b_func .vsmov-player-brand img {
-    height: 26px;
-    max-width: 106px;
-  }
-```
-
-Ví dụ muốn to hơn nữa (vd 38px desktop): tăng **cả `height` và `max-width`
-cùng tỉ lệ** (vd `height: 38px; max-width: 154px;`), nhớ giữ `max-width` lớn
-hơn chiều rộng thật của logo để logo không bị bóp ngang. Làm tương tự cho
-bản mobile.
-
-> ⚠️ CẢNH BÁO — đừng nhầm: dòng **645** trong cùng file có
-> `height: 26px !important;` nhưng đó là rule KHÁC (nút display icon
-> `.jw-display-icon-display::after`), KHÔNG phải logo. Chỉ sửa 2 rule
-> `.b_func .vsmov-player-brand img` ở trên.
-
-Kích thước đo thật sau khi tăng 20%: desktop 85,2×32px (trước 71,9×27px),
-mobile 69,2×26px (trước 58,5×22px).
-
-## 7. Lưu ý nhỏ về màu player
-
-Màu nhấn mặc định của player bây giờ là đỏ `#e50914` (đã đổi hết `#f97316`
-trong 3 file copy). Tuy nhiên, user nào trước đây đã lưu
-`localStorage` `bc_player_chrome_color=#f97316` thì trình duyệt của họ vẫn
-giữ màu cam cũ — chỉ người mới (chưa từng lưu) mới mặc định đỏ. Đây là hành
-vi cố ý giữ lại, không phải lỗi.
-
-## 8. Nội dung bundle (10 file + README này)
-
-| File | Nội dung |
-| --- | --- |
-| `client/public/jwplayer/origin.js` | Logic player copy từ vsmov (v62), đã gỡ tracking GA + embed-hit |
-| `client/public/jwplayer/player.css` | CSS player vsmov, màu nhấn đổi sang đỏ `#e50914` |
-| `client/public/jwplayer/broadcast-player.css` | CSS control bar vsmov, logo 32px desktop / 26px mobile |
-| `client/public/jwplayer/jwplayer-8.9.3.js` | JWPlayer 8.9.3 (key lấy từ `/api/player-key`) |
-| `client/src/pages/WatchMovie.jsx` | Trang xem chính: bỏ iframe, dùng player copy vsmov |
-| `client/src/routes.jsx` | Gỡ route `/test-player` |
-| `client/src/components/movies/MovieRow.jsx` | Thêm export `SECTION_THEMES` (task custom UI) |
-| `client/src/services/adminService.js` | Thêm `getPlayerSettings`, `updatePlayerSettings` (task admin-vsphim) |
-| `client/src/pages/admin/PlayerSettings.jsx` | Trang admin `/admin/player` (task admin-vsphim) |
-| `client/src/pages/admin/ViewsStats.jsx` | Trang admin `/admin/views` (task admin-vsphim) |
-
-Các file bị xóa ở commit `4c3202d` (`TestPlayer.jsx`, `TestPlayer.css`,
-`playerLogic.js`, `vsmov-pom.css`) không có mặt trong bundle — xem bước 2.
+- Nút "back to top" có thể che mất chữ "chủ." cuối disclaimer trên
+  desktop (mobile không bị) — đã chấp nhận để vậy, không sửa nữa.
+- Phụ đề đôi khi hiện literal `<i>...</i>` (VTT bị escape) — quirk
+  sẵn có từ bản copy player của vsmov, chưa sửa.
+- 6 ảnh minh họa trong `client/public/about/` được chụp trên sandbox
+  (API vsmov bị chặn nên một số ảnh gần như trống) — nên chụp lại
+  trên máy thật nếu muốn ảnh đẹp hơn.

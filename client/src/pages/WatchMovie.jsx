@@ -68,6 +68,94 @@ style trong 2 file CSS của player, chỉ thiếu display/position của Bootst
 .tooltip.show{opacity:.95}
 .tooltip .tooltip-inner{max-width:200px;padding:.25rem .5rem;color:#fff;text-align:center;background-color:#000;border-radius:.25rem;font-size:.875rem}
 .tooltip .tooltip-arrow{display:none}
+/* Fix 1a (24/11/2026) — JW native caption: khi controls đang hiện, nâng vùng
+caption lên 150px (100px mobile) để không đè control bar custom cao
+~113px. CHỈ là phòng thủ: renderer mặc định của player KHÔNG phải JW
+caption mà là overlay .bc-dual-subs (xem Fix 1b); JW caption chỉ xuất hiện
+ở đường #sub-up (upload) / iOS native fullscreen fallback. Giữ cả 2 cơ chế
+vì không xung đột. (Chú thích cũ nói "JW gốc chỉ nâng 60px" là SAI: bản
+copy này đã có max-height 140px cho video::-webkit-media-text-track-container
+khi controls hiện — player.css:2842.) */
+.jwplayer.jw-state-playing:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .jw-captions,
+.jwplayer:not(.jw-state-playing) .jw-captions,
+.jwplayer.jw-flag-media-audio.jw-state-playing .jw-captions {
+  max-height: calc(100% - 150px) !important;
+}
+@media screen and (max-width: 640px) {
+  .jwplayer.jw-state-playing:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .jw-captions,
+  .jwplayer:not(.jw-state-playing) .jw-captions,
+  .jwplayer.jw-flag-media-audio.jw-state-playing .jw-captions {
+    max-height: calc(100% - 100px) !important;
+  }
+}
+/* Fix 1b (24/11/2026) — sub ĐÈ control bar, renderer THẬT là overlay riêng
+.bc-dual-subs (origin.js mặc định gọi bcSetSingleSubtitleOverlay(true):
+"1 ngôn ngữ qua overlay — không phụ thuộc JW caption engine"; JW caption
+bị set 0 + ẩn bởi .bc-dual-hide-jw). Overlay có bottom:14% (player.css:2497,
+desktop 493px ≈ 69px) + z-index:35, chữ 40px mặc định (JS clamp 36–72px,
+origin.js bcDualFontSizes) — mép dưới overlay thấp hơn thanh control cao
+113px nên sub đè lên progress bar + nút (đo thật: overlay bottom 556.3,
+control bar top 512.3, chồng 43.9px). Nâng đáy overlay vượt hết thanh
+control CHỈ khi controls đang hiện (state-aware): controls tự ẩn thì rule
+8% gốc (player.css:2811) vẫn áp dụng, sub trở lại sát đáy, không lơ lửng.
+Selector kép (con .jwplayer + :has trên #rp-player) vì fullscreen có thể
+re-parent overlay sang #rp-player (bcMountDualOverlayHost). */
+.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .bc-dual-subs,
+#rp-player:has(.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden)) .bc-dual-subs,
+.jwplayer:not(.jw-state-playing) .bc-dual-subs,
+#rp-player:has(.jwplayer:not(.jw-state-playing)) .bc-dual-subs {
+  bottom: max(14%, 150px) !important;
+}
+@media screen and (max-width: 640px) {
+  .jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden) .bc-dual-subs,
+  #rp-player:has(.jwplayer:not(.jw-flag-user-inactive):not(.jw-flag-controls-hidden)) .bc-dual-subs,
+  .jwplayer:not(.jw-state-playing) .bc-dual-subs,
+  #rp-player:has(.jwplayer:not(.jw-state-playing)) .bc-dual-subs {
+    bottom: max(16%, 70px) !important;
+  }
+}
+/* Fix 1c (24/11/2026) — overlay z-index 35 vẽ ĐÈ lên panel setting khi menu
+mở (menu nằm trong .jw-controlbar). Ẩn overlay trong lúc bất kỳ dropdown
+player nào đang mở (.show của Bootstrap); đóng menu là sub hiện lại. */
+#rp-player:has(.b_func .dropdown-menu.show) .bc-dual-subs {
+  visibility: hidden !important;
+}
+/* Fix 2+4 (24/11/2026) — panel phụ đề/cài đặt là Bootstrap dropdown mở
+xuống dưới rồi bị #rp-player{overflow:hidden} cắt; .player-dm gốc chỉ có
+overflow:hidden (player.css:541) + .dm-sub có max-height:60vh nhưng KHÔNG
+có overflow auto (player.css:3129) nên nội dung dài bị cắt không cuộn —
+chỉ 2 cột ngôn ngữ (.sub-col, max-height 205px) tự cuộn, 3 hàng style
+(Màu chữ / Màu nền / Độ trong nền) nằm ngoài vùng cuộn đó. Ép cuộn dọc cả
+menu, theo đúng mẫu fullscreen đã có trong player.css:2716
+(max-height:min(72dvh,480px) + overflow:auto) — chọn 480px thay vì 420px
+(Nhóm B) vì đó là con số đã có sẵn trong code thật cho cùng panel.
+(Mở lên trên nhờ class dropup thêm bằng JS — xem startPlayerMenuFixes.)
+Riêng mobile (≤640px): player chỉ cao ~56.25vw (390px → 219px), khoảng
+trống phía trên control bar ≈ chiều cao player − 58px thanh bar; menu phụ
+đề cao ~320px KHÔNG thể nằm gọn trong đó nên phần trên (tiêu đề/tabs/2
+cột ngôn ngữ) bị #rp-player overflow:hidden cắt mất — đo thật: menu
+top −29px trong khi player top 128px, elementFromPoint tại điểm trong
+menu nhưng ngoài player trả về container trang (không phải menu). Ép
+max-height theo đúng chiều cao player (56.25vw − 70px ≈ 149px ở 390px)
+để menu nằm gọn trong player và cuộn nội bộ tới mọi hàng. */
+#rp-player .b_func .dropdown-menu.player-dm{
+  max-height:min(72vh,480px) !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+@media screen and (max-width: 640px) {
+  #rp-player .b_func .dropdown-menu.player-dm{
+    max-height:calc(56.25vw - 70px) !important;
+  }
+}
+/* Fix 3 (24/11/2026) — #player_top kẹt opacity 1 (animation bc-chrome-rise
+… both giữ lại), z-index 100, pointer-events auto, dải 50px trên cùng mobile
+chặn chạm; nội dung rỗng trên mobile (tiêu đề display:none). Rule 1 sửa lỗi
+chạm mọi viewport; rule 2 chỉ xóa vệt đen rỗng trên mobile. */
+#player_top{pointer-events:none !important}
+@media screen and (max-width:640px){#player_top{display:none !important}}
 `;
 
 const loadScript = (src, id) => new Promise((resolve, reject) => {
@@ -411,6 +499,42 @@ const WatchMovie = () => {
         }, 200);
     };
 
+    // Fix 2+4 (24/11/2026, Nhóm B): menu phụ đề/cài đặt là Bootstrap
+    // dropdown (<ul class="dropdown-menu player-dm">) mở XUỐNG dưới rồi bị
+    // #rp-player{overflow:hidden} cắt. Ép dropup (mở lên trên) bằng cách thêm
+    // class `dropup` vào cha .p_b-right sau khi origin.js render .b_func.
+    // KHÔNG dùng CSS-only top:auto/bottom:100% (giết transform của Popper,
+    // mất căn ngang). Kèm reset slide "Tuỳ chỉnh" về chính khi menu Cài đặt
+    // đóng, để lần mở sau không kẹt ở slide con.
+    const dropupTimerRef = useRef(null);
+    const menuFixCleanupRef = useRef(null);
+    const startPlayerMenuFixes = () => {
+        if (!dropupTimerRef.current) {
+            let tries = 0;
+            dropupTimerRef.current = setInterval(() => {
+                const el = document.querySelector('#rp-player .p_b-right');
+                if (el) {
+                    el.classList.add('dropup');
+                    clearInterval(dropupTimerRef.current);
+                    dropupTimerRef.current = null;
+                } else if (++tries > 200) {
+                    clearInterval(dropupTimerRef.current);
+                    dropupTimerRef.current = null;
+                }
+            }, 200);
+        }
+        if (menuFixCleanupRef.current) return;
+        const onDropdownHidden = (e) => {
+            const menu = e.target?.closest?.('.b_func')?.querySelector('.item-setup + .dropdown-menu');
+            if (!menu) return;
+            menu.querySelectorAll('.sub-slide').forEach((el) => { el.style.display = 'none'; });
+            const main = menu.querySelector('.content-slide');
+            if (main) main.style.display = '';
+        };
+        document.addEventListener('hidden.bs.dropdown', onDropdownHidden);
+        menuFixCleanupRef.current = () => document.removeEventListener('hidden.bs.dropdown', onDropdownHidden);
+    };
+
     const [movie, setMovie] = useState(null);
     const [episodes, setEpisodes] = useState([]);
     const [currentEpisode, setCurrentEpisode] = useState(null);
@@ -577,6 +701,8 @@ const WatchMovie = () => {
                 if (p && typeof p.remove === 'function') p.remove();
             } catch (e) {}
             if (brandTimerRef.current) { clearInterval(brandTimerRef.current); brandTimerRef.current = null; }
+            if (dropupTimerRef.current) { clearInterval(dropupTimerRef.current); dropupTimerRef.current = null; }
+            if (menuFixCleanupRef.current) { menuFixCleanupRef.current(); menuFixCleanupRef.current = null; }
             if (bootCleanupRef.current) { bootCleanupRef.current(); bootCleanupRef.current = null; }
             removeNode('phimviethay-player-css');
             removeNode('phimviethay-broadcast-css');
@@ -620,6 +746,7 @@ const WatchMovie = () => {
                     if (!document.getElementById('rp-player') || !document.getElementById('player')) return;
                     bootCleanupRef.current = startBootController();
                     startBrandPoller();
+                    startPlayerMenuFixes();
                     // origin.js nạp bằng <script> sẽ vỡ khi remount (top-level
                     // `const playerInstance` khai báo 2 lần trong global scope
                     // = SyntaxError, script không chạy). Nạp bằng fetch +
@@ -659,6 +786,7 @@ const WatchMovie = () => {
                     p.load({ file: data.m3u8, type: 'hls', autostart: true, tracks });
                     p.play();
                     if (!mountPlayerBrand()) startBrandPoller();
+                    startPlayerMenuFixes();
                 }
             } catch (e) {
                 if (!cancelled && mountedRef.current && runId === runIdRef.current) {
