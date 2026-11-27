@@ -2,7 +2,7 @@ import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { FaPlay, FaStar, FaInfoCircle, FaPlayCircle } from 'react-icons/fa';
-import { IMG_URL, getMovieDetail } from '../../services/movieService';
+import { IMG_URL, getMovieDetail, fetchEpisodeCurrent } from '../../services/movieService';
 import OptimizedImage from '../common/OptimizedImage';
 
 // Fix A1 (23/11/2026): chỉ 1 popup hover được mở tại 1 thời điểm — thẻ mới
@@ -45,18 +45,34 @@ const MovieCard = memo(({ movie }) => {
         if (activePopupClose === closePopupNow) activePopupClose = null;
     }, [closePopupNow]);
 
-    // UI 22/11/2026: không có điểm thì ẨN badge điểm (trước đây hiện "N/A"
-    // màu vàng, nhìn như phim bị chê); không có số tập thì ẨN badge tập
-    // (API danh sách không trả episode_current nên trước đây mọi thẻ đều
-    // hiện "Full", kể cả phim bộ đang chiếu).
+    // UI: Điểm đánh giá (ẩn nếu không có điểm) & Năm phát hành
     const ratingVal = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
     const displayRating = ratingVal > 0 ? ratingVal.toFixed(1) : null;
-    const year = movie.year || null; // Chỉ hiện năm khi có dữ liệu thật (vd Lịch sử không lưu năm → ẩn badge, không hiện "Unknown" hay tên thể loại).
-    const displayEpisode = movie.episode_current 
-        || movie.episode_name 
+    const year = movie.year || null;
+
+    // Real episode: ưu tiên episode_current/episode_name có sẵn (ở Tủ phim hoặc dữ liệu chi tiết).
+    // Nếu chưa có, tự động queue fetch ngầm từ API chi tiết vsmov để hiển thị chính xác "Tập 11", "Tập 22", "Hoàn Tất" v.v.
+    const [realEpisode, setRealEpisode] = useState(movie.episode_current || movie.episode_name || null);
+
+    useEffect(() => {
+        if (movie.episode_current || movie.episode_name) {
+            setRealEpisode(movie.episode_current || movie.episode_name);
+            return;
+        }
+
+        const unsubscribe = fetchEpisodeCurrent(movie.slug, (ep) => {
+            if (ep) setRealEpisode(ep);
+        });
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [movie.slug, movie.episode_current, movie.episode_name]);
+
+    const displayEpisode = realEpisode 
         || (movie.tmdb?.type === 'tv' 
             ? (movie.tmdb?.season ? `Phần ${movie.tmdb.season}` : 'Phim Bộ') 
-            : 'Full');
+            : (movie.quality ? 'Full' : null));
     const posterUrl = `${IMG_URL}${movie.thumb_url}`;
     const backdropUrl = movie.poster_url && movie.poster_url.includes('http') ? movie.poster_url : posterUrl;
 
@@ -88,7 +104,7 @@ const MovieCard = memo(({ movie }) => {
             } else {
                 detailFetchedRef.current = false;
             }
-        } catch (e) {
+        } catch {
             detailFetchedRef.current = false;
         } finally {
             setDetailLoading(false);
@@ -174,6 +190,11 @@ const MovieCard = memo(({ movie }) => {
                         {year && (<span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{year}</span>)}
                         {time && (<span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{time.replace('phút', 'p')}</span>)}
                         <span style={{ backgroundColor: 'var(--accent, #dc2626)' }} className="text-white px-1.5 py-0.5 rounded uppercase shadow-sm">{movie.quality || 'HD'}</span>
+                        {displayEpisode && (
+                            <span style={{ backgroundColor: 'var(--accent, #dc2626)' }} className="text-white px-1.5 py-0.5 rounded shadow-sm">
+                                {displayEpisode}
+                            </span>
+                        )}
                     </div>
                     {loadingDetail ? (
                         <div className="w-full space-y-1.5 py-1" aria-hidden="true">

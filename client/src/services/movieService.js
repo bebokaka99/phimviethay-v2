@@ -18,6 +18,85 @@ export let DYNAMIC_CDN = '';
 // --- HELPER FUNCTIONS ---
 const PLACEHOLDER = 'https://placehold.co/300x450?text=No+Image';
 
+// --- EPISODE CACHE & QUEUE FETCHER ---
+const EP_CACHE_KEY = 'pvh_episode_cache_v1';
+const episodeCache = new Map();
+
+try {
+    const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(EP_CACHE_KEY) : null;
+    if (raw) {
+        const parsed = JSON.parse(raw);
+        Object.entries(parsed).forEach(([k, v]) => episodeCache.set(k, v));
+    }
+} catch { /* Bỏ qua nếu lỗi storage */ }
+
+const persistEpCache = () => {
+    try {
+        if (typeof sessionStorage === 'undefined') return;
+        const obj = Object.fromEntries(episodeCache);
+        sessionStorage.setItem(EP_CACHE_KEY, JSON.stringify(obj));
+    } catch { /* Bỏ qua nếu storage đầy */ }
+};
+
+const queue = [];
+let activeQueueRequests = 0;
+const MAX_CONCURRENT_EP_REQUESTS = 4;
+const epListeners = new Map();
+
+const processEpQueue = () => {
+    while (activeQueueRequests < MAX_CONCURRENT_EP_REQUESTS && queue.length > 0) {
+        const slug = queue.shift();
+        activeQueueRequests++;
+
+        client.get(`/phim/${slug}`)
+            .then((response) => {
+                const resData = response.data;
+                const ep = resData?.movie?.episode_current || 'Full';
+                episodeCache.set(slug, ep);
+                persistEpCache();
+
+                const cbs = epListeners.get(slug);
+                if (cbs) {
+                    cbs.forEach(cb => {
+                        try { cb(ep); } catch { /* Bỏ qua callback lỗi */ }
+                    });
+                    epListeners.delete(slug);
+                }
+            })
+            .catch(() => {
+                episodeCache.set(slug, 'Full');
+            })
+            .finally(() => {
+                activeQueueRequests--;
+                processEpQueue();
+            });
+    }
+};
+
+export const fetchEpisodeCurrent = (slug, onLoaded) => {
+    if (!slug) return () => {};
+    const cleanSlug = slug.replace(/^player-/, '');
+
+    if (episodeCache.has(cleanSlug)) {
+        onLoaded(episodeCache.get(cleanSlug));
+        return () => {};
+    }
+
+    if (!epListeners.has(cleanSlug)) {
+        epListeners.set(cleanSlug, new Set());
+    }
+    epListeners.get(cleanSlug).add(onLoaded);
+
+    if (!queue.includes(cleanSlug)) {
+        queue.push(cleanSlug);
+        processEpQueue();
+    }
+
+    return () => {
+        epListeners.get(cleanSlug)?.delete(onLoaded);
+    };
+};
+
 // Vsmov có vài phim poster_url = {} (object rỗng) -> phải guard typeof string,
 // nếu không .startsWith sẽ crash cả trang.
 const resolveImg = (url) => {
@@ -74,6 +153,18 @@ export const getMovieDetail = async (slug) => {
             const movieObj = sanitizeMovie(resData.movie);
             if (!movieObj.tmdb) movieObj.tmdb = { vote_average: 0, vote_count: 0 };
 
+            if (movieObj.episode_current) {
+                episodeCache.set(cleanSlug, movieObj.episode_current);
+                persistEpCache();
+                const cbs = epListeners.get(cleanSlug);
+                if (cbs) {
+                    cbs.forEach(cb => {
+                        try { cb(movieObj.episode_current); } catch { /* Bỏ qua callback lỗi */ }
+                    });
+                    epListeners.delete(cleanSlug);
+                }
+            }
+
             // Vsmov chỉ trả link_embed, CHƯA có link_m3u8 (player chưa đụng tới).
             // Dọn server_name dính rác "Vietsub\r\n #1" -> "Vietsub #1".
             const episodes = (resData.episodes || []).map((sv) => ({
@@ -100,7 +191,7 @@ export const getHomeData = async () => {
     try {
         const response = await client.get('/danh-sach/phim-moi-cap-nhat', { params: { page: 1 } });
         return normalizeList(response.data);
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 export const getMoviesBySlug = async (slug, page = 1, type = 'danh-sach', filterParams = {}) => {
@@ -116,7 +207,7 @@ export const getMoviesBySlug = async (slug, page = 1, type = 'danh-sach', filter
         const url = `/${finalType}/${finalSlug}`;
         const response = await client.get(url, { params: { page, ...filterParams } });
         return normalizeList(response.data);
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 // Giai đoạn 3 (L8): cache trong phiên + retry khi lỗi (tối đa 2 lần,
@@ -151,7 +242,7 @@ export const searchMovies = async (keyword, page = 1) => {
     try {
         const response = await client.get('/tim-kiem', { params: { keyword, page } });
         return normalizeList(response.data);
-    } catch (error) { return null; }
+    } catch { return null; }
 };
 
 // Vsmov không có 2 endpoint này (404) -> catch trả [] như cũ,
@@ -161,7 +252,7 @@ export const getMoviePeoples = async (slug) => {
         const cleanSlug = slug.replace(/^player-/, '');
         const response = await client.get(`/phim/${cleanSlug}/peoples`);
         return response.data?.data?.peoples || [];
-    } catch (error) { return []; }
+    } catch { return []; }
 };
 
 export const getMovieImages = async (slug) => {
@@ -169,5 +260,5 @@ export const getMovieImages = async (slug) => {
         const cleanSlug = slug.replace(/^player-/, '');
         const response = await client.get(`/phim/${cleanSlug}/images`);
         return response.data?.data || [];
-    } catch (error) { return []; }
+    } catch { return []; }
 };
