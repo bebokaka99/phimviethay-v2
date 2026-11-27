@@ -5,7 +5,7 @@ import {
     FaPlay, FaList, FaLightbulb, FaStar, FaStepForward,
     FaArrowLeft, FaExpand, FaClock, FaGlobe, FaUsers, FaHeart,
     FaHome, FaAngleRight, FaSearch, FaArrowRight,
-    FaSortAmountDown, FaSortAmountUp
+    FaSortAmountDown, FaSortAmountUp, FaTimes
 } from 'react-icons/fa';
 
 import CommentSection from '../components/comments/CommentSection';
@@ -577,6 +577,127 @@ const WatchMovie = () => {
     const [isFavorite, setIsFavorite] = useState(false);
     const [watchedEpisodes, setWatchedEpisodes] = useState([]);
 
+    // --- Xem Tiếp (Resume Modal) & Tự Động Chuyển Tập (Auto Next) ---
+    const [showResume, setShowResume] = useState(false);
+    const [resumeTime, setResumeTime] = useState(0);
+    const resumeHandledRef = useRef(false);
+
+    const [showAutoNext, setShowAutoNext] = useState(false);
+    const [autoNextCountdown, setAutoNextCountdown] = useState(10);
+    const isAutoNextDismissed = useRef(false);
+    const autoNextTimerRef = useRef(null);
+
+    const formatSeconds = (sec) => {
+        if (!sec || isNaN(sec)) return '00:00';
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = Math.floor(sec % 60);
+        if (h > 0) {
+            return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    const getNextEpisode = () => {
+        if (!episodes || episodes.length === 0 || !currentEpisode) return null;
+        const safeServerIndex = episodes[currentServer] ? currentServer : 0;
+        const serverData = episodes[safeServerIndex]?.server_data || [];
+        if (serverData.length === 0) return null;
+        const currentIndex = serverData.findIndex(e => e.slug === currentEpisode.slug);
+        if (currentIndex !== -1 && currentIndex < serverData.length - 1) return serverData[currentIndex + 1];
+        return null;
+    };
+
+    // Quản lý đếm ngược Auto-Next 10s
+    useEffect(() => {
+        if (!showAutoNext) {
+            if (autoNextTimerRef.current) {
+                clearInterval(autoNextTimerRef.current);
+                autoNextTimerRef.current = null;
+            }
+            return;
+        }
+
+        setAutoNextCountdown(10);
+        autoNextTimerRef.current = setInterval(() => {
+            setAutoNextCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(autoNextTimerRef.current);
+                    autoNextTimerRef.current = null;
+                    setShowAutoNext(false);
+                    const nEp = getNextEpisode();
+                    if (nEp) handleChangeEpisode(nEp);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => {
+            if (autoNextTimerRef.current) {
+                clearInterval(autoNextTimerRef.current);
+                autoNextTimerRef.current = null;
+            }
+        };
+    }, [showAutoNext]);
+
+    // Reset trạng thái khi đổi tập
+    useEffect(() => {
+        setShowAutoNext(false);
+        isAutoNextDismissed.current = false;
+        resumeHandledRef.current = false;
+        if (autoNextTimerRef.current) {
+            clearInterval(autoNextTimerRef.current);
+            autoNextTimerRef.current = null;
+        }
+    }, [currentEpisode?.slug]);
+
+    const handleResume = () => {
+        setShowResume(false);
+        const p = window.jwplayer && window.jwplayer('player');
+        if (p && typeof p.seek === 'function') {
+            try {
+                p.seek(resumeTime);
+                p.play();
+            } catch (err) {}
+        }
+    };
+
+    const handleRestart = () => {
+        setShowResume(false);
+        const p = window.jwplayer && window.jwplayer('player');
+        if (p && typeof p.seek === 'function') {
+            try {
+                p.seek(0);
+                p.play();
+                if (movie?.slug && currentEpisode?.slug) {
+                    saveWatchProgress(movie.slug, currentEpisode.slug, 0, p.getDuration ? p.getDuration() : 0);
+                }
+            } catch (err) {}
+        }
+    };
+
+    const handleNextEpisodeNow = (e) => {
+        if (e) e.stopPropagation();
+        setShowAutoNext(false);
+        if (autoNextTimerRef.current) {
+            clearInterval(autoNextTimerRef.current);
+            autoNextTimerRef.current = null;
+        }
+        const nEp = getNextEpisode();
+        if (nEp) handleChangeEpisode(nEp);
+    };
+
+    const handleDismissAutoNext = (e) => {
+        if (e) e.stopPropagation();
+        setShowAutoNext(false);
+        isAutoNextDismissed.current = true;
+        if (autoNextTimerRef.current) {
+            clearInterval(autoNextTimerRef.current);
+            autoNextTimerRef.current = null;
+        }
+    };
+
     // --- Chon tap: sap xep / tim tap / render theo dot ---
     const [epSort, setEpSort] = useState(() => {
         try { return localStorage.getItem('ep_sort_order') === 'desc' ? 'desc' : 'asc'; } catch (e) { return 'asc'; }
@@ -742,31 +863,47 @@ const WatchMovie = () => {
         };
     }, []);
 
-    // Lưu và khôi phục tiến trình xem (phút:giây) trên trình duyệt
+    // Lưu và hiển thị Xem tiếp / Auto-next trên trình duyệt
     const attachProgressTracking = (p, movieSlug, epSlug) => {
         if (!p || typeof p.on !== 'function' || !movieSlug) return;
-        const saved = getSavedProgress(movieSlug, epSlug);
-        if (saved && saved.currentTime > 10) {
-            let sought = false;
-            const doSeek = () => {
-                if (sought) return;
-                sought = true;
-                try {
-                    const dur = p.getDuration ? p.getDuration() : 0;
-                    if (saved.currentTime < (dur || Infinity) - 15) {
-                        p.seek(saved.currentTime);
-                    }
-                } catch (err) {}
-            };
-            p.once('play', () => { setTimeout(doSeek, 600); });
+        
+        // Kiểm tra xem tập này có lưu mốc thời gian xem dở (> 15s) không để hiện popup hỏi
+        if (!resumeHandledRef.current) {
+            const saved = getSavedProgress(movieSlug, epSlug);
+            if (saved && saved.currentTime > 15) {
+                resumeHandledRef.current = true;
+                setResumeTime(saved.currentTime);
+                setShowResume(true);
+                // Tạm dừng video để người xem chủ động chọn
+                p.once('play', () => {
+                    setTimeout(() => {
+                        try { p.pause(); } catch (e) {}
+                    }, 150);
+                });
+            }
         }
 
         let lastSave = 0;
         p.on('time', (e) => {
             const now = Date.now();
-            if (now - lastSave > 5000 && e.position > 5) {
+            const pos = e.position || 0;
+            const dur = e.duration || 0;
+
+            // 1. Lưu tiến trình mỗi 5s
+            if (now - lastSave > 5000 && pos > 5) {
                 lastSave = now;
-                saveWatchProgress(movieSlug, epSlug, e.position, e.duration);
+                saveWatchProgress(movieSlug, epSlug, pos, dur);
+            }
+
+            // 2. Kích hoạt Auto-Next khi còn đúng 120s cuối
+            if (dur > 150 && (dur - pos) <= 120 && !isAutoNextDismissed.current) {
+                const nEp = getNextEpisode();
+                if (nEp) {
+                    setShowAutoNext((prev) => {
+                        if (!prev) return true;
+                        return prev;
+                    });
+                }
             }
         });
 
@@ -936,16 +1073,6 @@ const WatchMovie = () => {
         }
     };
 
-    const getNextEpisode = () => {
-        if (!episodes || episodes.length === 0 || !currentEpisode) return null;
-        const safeServerIndex = episodes[currentServer] ? currentServer : 0;
-        const serverData = episodes[safeServerIndex]?.server_data || [];
-        if (serverData.length === 0) return null;
-        const currentIndex = serverData.findIndex(e => e.slug === currentEpisode.slug);
-        if (currentIndex !== -1 && currentIndex < serverData.length - 1) return serverData[currentIndex + 1];
-        return null;
-    };
-
     if (loading) return <div className="min-h-screen bg-transparent flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div></div>;
     if (!movie) return null;
 
@@ -1035,6 +1162,72 @@ const WatchMovie = () => {
                                     <div className="flex items-center justify-center h-full text-gray-400 bg-gray-900 px-6 text-center"><p>Tập này chưa có link phát. Thử đổi server khác bên phải.</p></div>
                                 )
                             ) : <div className="flex items-center justify-center h-full text-gray-500 bg-gray-900"><p>Đang tải...</p></div>}
+
+                            {/* Modal Xem Tiếp? (Phần 1 - Nằm trên player, mờ nền bằng video/poster phía sau) */}
+                            {showResume && (
+                                <div className="absolute inset-0 bg-black/45 backdrop-blur-md flex items-center justify-center z-[180] pointer-events-auto p-4 animate-fade-in">
+                                    <div className="p-6 md:p-8 rounded-3xl bg-[#0a0e17]/95 border border-red-600/30 backdrop-blur-2xl shadow-2xl flex flex-col items-center max-w-[340px] w-full text-center">
+                                        <img src={logoImg} className="h-9 mb-4 opacity-95 object-contain" alt="Logo" />
+                                        <h3 className="text-white text-lg font-black mb-1 uppercase tracking-wider">Xem tiếp?</h3>
+                                        <p className="text-gray-300 text-sm mb-6 text-center">
+                                            Bạn đang dừng tại <span className="text-red-500 font-mono font-bold mx-1">{formatSeconds(resumeTime)}</span>
+                                        </p>
+                                        <div className="flex gap-3 w-full">
+                                            <button 
+                                                onClick={handleRestart} 
+                                                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold transition-all"
+                                            >
+                                                XEM LẠI TỪ ĐẦU
+                                            </button>
+                                            <button 
+                                                onClick={handleResume} 
+                                                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-lg shadow-red-600/30"
+                                            >
+                                                TIẾP TỤC
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hộp Đếm Ngược Auto-Next (Phần 2 - Khi còn 120s cuối) */}
+                            {showAutoNext && nextEp && (
+                                <div 
+                                    onClick={handleNextEpisodeNow}
+                                    className="absolute bottom-20 md:bottom-24 right-4 z-[160] w-64 md:w-72 cursor-pointer group/next animate-in pointer-events-auto"
+                                >
+                                    <div className="bg-black/80 backdrop-blur-xl border border-white/15 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-all duration-300 group-hover/next:bg-black/90 group-hover/next:border-red-500/60">
+                                        <div className="p-3 flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center text-red-500 group-hover/next:bg-red-600 group-hover/next:text-white transition-colors duration-300 flex-shrink-0">
+                                                <FaStepForward size={13} className="ml-0.5" />
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <div className="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-0.5">
+                                                    Tập sau trong <span className="text-red-400 font-bold">{autoNextCountdown}s</span>
+                                                </div>
+                                                <div className="text-sm text-white font-bold leading-tight truncate">
+                                                    Tập {nextEp.name}
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={handleDismissAutoNext}
+                                                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+                                                title="Hủy tự động chuyển tập"
+                                                aria-label="Đóng"
+                                            >
+                                                <FaTimes size={13} />
+                                            </button>
+                                        </div>
+                                        {/* Thanh đỏ đếm ngược tiến trình */}
+                                        <div className="h-[3px] bg-white/10 w-full">
+                                            <div 
+                                                className="h-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.9)] transition-all duration-1000 ease-linear"
+                                                style={{ width: `${(autoNextCountdown / 10) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-0 md:mt-4 bg-gradient-to-r from-black/80 to-black/60 border-b md:border border-white/10 border-t-white/5 p-3 md:rounded-lg backdrop-blur-xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
