@@ -867,10 +867,11 @@ const WatchMovie = () => {
     const attachProgressTracking = (p, movieSlug, epSlug) => {
         if (!p || typeof p.on !== 'function' || !movieSlug) return;
         
-        // Kiểm tra xem tập này có lưu mốc thời gian xem dở (> 15s) không để hiện popup hỏi
+        // Kiểm tra xem tập này có lưu mốc thời gian xem dở (> 15s và chưa hết tập) không để hiện popup hỏi
         if (!resumeHandledRef.current) {
             const saved = getSavedProgress(movieSlug, epSlug);
-            if (saved && saved.currentTime > 15) {
+            const isFinished = saved?.duration > 0 && (saved.duration - saved.currentTime) <= 60;
+            if (saved && saved.episodeSlug === epSlug && saved.currentTime > 15 && !isFinished) {
                 resumeHandledRef.current = true;
                 setResumeTime(saved.currentTime);
                 setShowResume(true);
@@ -880,6 +881,9 @@ const WatchMovie = () => {
                         try { p.pause(); } catch (e) {}
                     }, 150);
                 });
+            } else {
+                resumeHandledRef.current = true;
+                setShowResume(false);
             }
         }
 
@@ -997,7 +1001,12 @@ const WatchMovie = () => {
         return () => { cancelled = true; };
     }, [currentEpisode, retryTick]);
 
-    const handleChangeEpisode = (ep) => { setCurrentEpisode(ep); setSearchParams({ tap: ep.slug }); };
+    const handleChangeEpisode = (ep) => {
+        setShowResume(false);
+        resumeHandledRef.current = false;
+        setCurrentEpisode(ep);
+        setSearchParams({ tap: ep.slug });
+    };
 
     // --- Sap xep / tim tap ---
     // API vsmov tra danh sach tap khong theo thu tu (vd One Piece: khoi

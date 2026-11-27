@@ -35,10 +35,18 @@ export const getProgressKey = (movieSlug, episodeSlug) =>
 
 export const getSavedProgress = (movieSlug, episodeSlug) => {
     try {
-        const raw = localStorage.getItem(getProgressKey(movieSlug, episodeSlug)) ||
-                    localStorage.getItem(getProgressKey(movieSlug, ''));
-        if (!raw) return null;
-        return JSON.parse(raw);
+        if (!movieSlug) return null;
+        if (episodeSlug) {
+            // Khi xem một tập cụ thể: CHỈ lấy đúng tiến trình của tập đó, tuyệt đối không lấy tập khác
+            const raw = localStorage.getItem(getProgressKey(movieSlug, episodeSlug));
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (parsed.episodeSlug && parsed.episodeSlug !== episodeSlug) return null;
+            return parsed;
+        }
+        // Khi ở ngoài trang chủ không truyền episodeSlug: lấy tiến trình gần nhất của phim
+        const raw = localStorage.getItem(getProgressKey(movieSlug, ''));
+        return raw ? JSON.parse(raw) : null;
     } catch {
         return null;
     }
@@ -55,7 +63,11 @@ export const saveWatchProgress = (movieSlug, episodeSlug, currentTime, duration)
             percent: duration > 0 ? Math.min(Math.round((currentTime / duration) * 100), 99) : 0,
             updatedAt: Date.now()
         };
-        localStorage.setItem(getProgressKey(movieSlug, episodeSlug), JSON.stringify(data));
+        // 1. Lưu tiến trình riêng biệt cho đúng tập này
+        if (episodeSlug) {
+            localStorage.setItem(getProgressKey(movieSlug, episodeSlug), JSON.stringify(data));
+        }
+        // 2. Lưu mốc tập xem gần nhất cho cả phim (phục vụ hàng tiếp tục xem ngoài trang chủ)
         localStorage.setItem(getProgressKey(movieSlug, ''), JSON.stringify(data));
     } catch {
         // Safe fail
