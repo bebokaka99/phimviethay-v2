@@ -63,6 +63,7 @@ app.get('/ping', (req, res) => res.status(200).send('Pong'));
 
 app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/user', require('./src/routes/userRoutes'));
+app.use('/api/playlists', require('./src/routes/playlistRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/analytics', require('./src/routes/analyticsRoutes'));

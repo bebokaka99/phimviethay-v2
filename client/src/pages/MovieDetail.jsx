@@ -9,6 +9,7 @@ import {
 
 import MovieRow from '../components/movies/MovieRow';
 import CommentSection from '../components/comments/CommentSection';
+import SaveToPlaylistModal from '../components/movies/SaveToPlaylistModal';
 import { FaList as FaListIcon } from 'react-icons/fa';
 import useOnScreen from '../hooks/useOnScreen';
 
@@ -104,6 +105,7 @@ const MovieDetail = () => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [toastMsg, setToastMsg] = useState('');
     const [isFavorite, setIsFavorite] = useState(false);
+    const [showPlaylistModal, setShowPlaylistModal] = useState(false);
     const [continueEp, setContinueEp] = useState(null);
     // Lazy: so tap dang hien theo tung server (mac dinh 100/server)
     const [epShown, setEpShown] = useState({});
@@ -221,23 +223,13 @@ const MovieDetail = () => {
             ref.current.scrollBy({ left: amount, behavior: 'smooth' }); 
         } 
     };
-    const handleToggleFavorite = async () => {
-        try {
-            const ratingToSave = tmdbData?.rating || movie.tmdb?.vote_average || movie.vote_average || 0;
-            const newStatus = await toggleFavorite({
-                slug: movie.slug, name: movie.name, thumb_url: movie.thumb_url, 
-                quality: movie.quality, year: movie.year, episode_current: movie.episode_current, 
-                vote_average: ratingToSave
-            });
-            setIsFavorite(newStatus);
-            showToast(newStatus ? 'Đã thêm vào danh sách yêu thích ❤️' : 'Đã xóa khỏi danh sách yêu thích 💔');
-        } catch (error) {
-             if (error.response?.status === 401 || error.toString().includes("đăng nhập")) {
-                 showToast("Vui lòng đăng nhập lại!");
-             } else {
-                 showToast("Có lỗi xảy ra, thử lại sau!");
-             }
+    const handleToggleFavorite = () => {
+        if (!getCurrentUser()) {
+            showToast("Vui lòng đăng nhập để lưu phim!");
+            setTimeout(() => navigate('/login'), 1200);
+            return;
         }
+        setShowPlaylistModal(true);
     };
     const handleWatchNow = () => {
         if (episodes.length > 0 && episodes[0].server_data.length > 0) {
@@ -285,6 +277,16 @@ const MovieDetail = () => {
             </Helmet>
 
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+
+            <SaveToPlaylistModal
+                movie={movie}
+                isOpen={showPlaylistModal}
+                onClose={() => setShowPlaylistModal(false)}
+                onStatusChange={({ isFavorite: favStatus }) => {
+                    setIsFavorite(favStatus);
+                    showToast(favStatus ? 'Đã thêm vào danh sách yêu thích ❤️' : 'Đã xóa khỏi danh sách yêu thích 💔');
+                }}
+            />
             
             {/* FIXED BACKDROP */}
             <div className="fixed inset-0 z-0 pointer-events-none">

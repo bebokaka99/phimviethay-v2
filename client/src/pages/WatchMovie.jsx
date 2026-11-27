@@ -372,6 +372,7 @@ const startBootController = () => {
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
 import { saveWatchProgress, getSavedProgress } from '../components/movies/ContinueWatchingRow';
+import SaveToPlaylistModal from '../components/movies/SaveToPlaylistModal';
 import logoImg from '../assets/logo.png';
 
 // --- mapSubtitleTracks (inline từ playerLogic.js — bản viết lại đã xóa) ---
@@ -592,6 +593,7 @@ const WatchMovie = () => {
     const [isTheater, setIsTheater] = useState(false);
     const [toastMsg, setToastMsg] = useState('');
     const [isFavorite, setIsFavorite] = useState(false);
+    const [showPlaylistModal, setShowPlaylistModal] = useState(false);
     const [watchedEpisodes, setWatchedEpisodes] = useState([]);
 
     // --- Xem Tiếp (Resume Modal) & Tự Động Chuyển Tập (Auto Next) ---
@@ -1084,19 +1086,13 @@ const WatchMovie = () => {
         handleChangeEpisode(found);
     };
 
-    const handleToggleFavorite = async () => {
-        try {
-            const rating = movie.tmdb?.vote_average || movie.vote_average || 0;
-            const currentEpName = currentEpisode?.name || 'Full';
-            const newStatus = await toggleFavorite({
-                slug: movie.slug, name: movie.name, thumb_url: movie.thumb_url, quality: movie.quality, year: movie.year, episode_current: currentEpName, vote_average: rating
-            });
-            setIsFavorite(newStatus);
-            showToast(newStatus ? 'Đã thêm vào tủ phim ❤️' : 'Đã xóa khỏi tủ phim 💔');
-        } catch (error) {
-            showToast(error.toString());
-            if (error === "Vui lòng đăng nhập để lưu phim!") setTimeout(() => navigate('/login'), 1500);
+    const handleToggleFavorite = () => {
+        if (!localStorage.getItem('token')) {
+            showToast("Vui lòng đăng nhập để lưu phim!");
+            setTimeout(() => navigate('/login'), 1200);
+            return;
         }
+        setShowPlaylistModal(true);
     };
 
     if (loading) return <div className="min-h-screen bg-transparent flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--accent)]"></div></div>;
@@ -1123,6 +1119,16 @@ const WatchMovie = () => {
             )}
 
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+
+            <SaveToPlaylistModal
+                movie={movie}
+                isOpen={showPlaylistModal}
+                onClose={() => setShowPlaylistModal(false)}
+                onStatusChange={({ isFavorite: favStatus }) => {
+                    setIsFavorite(favStatus);
+                    showToast(favStatus ? 'Đã thêm vào tủ phim ❤️' : 'Đã xóa khỏi tủ phim 💔');
+                }}
+            />
             <div className={`fixed inset-0 bg-black/98 z-40 transition-opacity duration-700 pointer-events-none ${isLightOff ? 'opacity-100' : 'opacity-0'}`} />
 
             <div className={`relative z-50 transition-all duration-700 ${isLightOff ? 'pt-10' : 'pt-24 pb-12'} container mx-auto px-0 md:px-4`} ref={playerRef}>

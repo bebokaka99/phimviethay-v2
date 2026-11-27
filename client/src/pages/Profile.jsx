@@ -16,6 +16,7 @@ import { getRoleLabel } from '../utils/roleLabel';
 import { HOME_ROWS } from '../config/menuRows';
 import { useTheme } from '../context/ThemeContext';
 import { calculateLevel, AVATAR_FRAMES } from '../utils/levelUtils';
+import { getPlaylists, getPlaylistMovies, removeMovieFromPlaylist } from '../services/playlistService';
 
 const CLOUD_NAME = 'dffwgj4x3';
 const UPLOAD_PRESET = 'phimviethay_preset';
@@ -427,6 +428,11 @@ const Profile = () => {
     const resetTheme = themeApi?.resetTheme || (() => {});
     const themePresets = themeApi?.presets || [];
 
+    const [playlists, setPlaylists] = useState([]);
+    const [activePlaylistTab, setActivePlaylistTab] = useState('favorites');
+    const [playlistMovies, setPlaylistMovies] = useState([]);
+    const [loadingPlaylistMovies, setLoadingPlaylistMovies] = useState(false);
+
     const fetchFavs = async () => {
         try {
             const data = await getFavorites();
@@ -437,6 +443,13 @@ const Profile = () => {
             }));
             setFavorites(mappedData || []);
         } catch (e) { console.error(e); } finally { setLoadingFavs(false); }
+    };
+
+    const fetchPlaylists = async () => {
+        try {
+            const data = await getPlaylists();
+            setPlaylists(data || []);
+        } catch (e) { console.error(e); }
     };
 
     useEffect(() => {
@@ -450,17 +463,55 @@ const Profile = () => {
             current_frame: user.current_frame || 'default'
         }));
         fetchFavs();
+        fetchPlaylists();
     }, [user, navigate]);
 
+    useEffect(() => {
+        if (activePlaylistTab === 'favorites') return;
+        setLoadingPlaylistMovies(true);
+        getPlaylistMovies(activePlaylistTab)
+            .then(res => {
+                const mapped = (res?.movies || []).map(m => ({
+                    _id: m.id,
+                    slug: m.movie_slug,
+                    name: m.movie_name,
+                    thumb_url: m.movie_thumb,
+                    quality: m.movie_quality || 'HD',
+                    year: m.movie_year || '2024',
+                    episode_current: m.episode_current || 'Full',
+                    vote_average: m.vote_average ? parseFloat(m.vote_average) : 0,
+                    origin_name: 'Đã lưu'
+                }));
+                setPlaylistMovies(mapped);
+            })
+            .catch(e => console.error(e))
+            .finally(() => setLoadingPlaylistMovies(false));
+    }, [activePlaylistTab]);
+
     const handleRemove = async (movie) => {
-        const prev = favorites;
-        setFavorites(prev.filter((m) => m._id !== movie._id));
-        try {
-            await toggleFavorite({ slug: movie.slug });
-            setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi tủ phim.` });
-        } catch (e) {
-            setFavorites(prev);
-            setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
+        if (activePlaylistTab === 'favorites') {
+            const prev = favorites;
+            setFavorites(prev.filter((m) => m._id !== movie._id));
+            try {
+                await toggleFavorite({ slug: movie.slug });
+                setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi tủ phim.` });
+            } catch (e) {
+                setFavorites(prev);
+                setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
+            }
+        } else {
+            const prev = playlistMovies;
+            setPlaylistMovies(prev.filter((m) => m.slug !== movie.slug));
+            try {
+                await removeMovieFromPlaylist(activePlaylistTab, movie.slug);
+                setPlaylists(prevList => prevList.map(p => 
+                    p.id === activePlaylistTab ? { ...p, movie_count: Math.max(0, (p.movie_count || 1) - 1) } : p
+                ));
+                setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi danh sách.` });
+            } catch (e) {
+                setPlaylistMovies(prev);
+                setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
+            }
         }
     };
 
@@ -652,27 +703,65 @@ const Profile = () => {
 
             <div className="h-6"></div>
 
-            {/* Tủ Phim Của Tôi */}
+            {/* Tủ Phim Của Tôi & Playlists */}
             <div className="container mx-auto px-4 md:px-12">
-                <div className="mb-8 flex items-end justify-between border-b border-white/10 pb-4">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                        <FaHeart className="text-red-600" /> Tủ Phim Của Tôi 
-                        <span className="text-sm font-normal text-gray-500">({favorites.length})</span>
-                    </h2>
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-4 gap-3">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <FaHeart className="text-red-600" /> Tủ Phim & Bộ Sưu Tập
+                        </h2>
+                        <p className="text-xs text-gray-400 mt-0.5">Danh sách yêu thích và các bộ sưu tập phim bạn đã tạo.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/tu-phim')}
+                        className="text-xs font-bold text-[var(--accent)] hover:underline self-start sm:self-auto flex items-center gap-1.5"
+                    >
+                        Quản lý chi tiết tủ phim →
+                    </button>
                 </div>
-                {loadingFavs ? (
+
+                {/* Tabs phân loại nhanh */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar mb-6 select-none">
+                    <button
+                        type="button"
+                        onClick={() => setActivePlaylistTab('favorites')}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-full font-bold text-xs whitespace-nowrap transition border shrink-0 ${activePlaylistTab === 'favorites' ? 'bg-red-600 text-white border-red-500 shadow' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                    >
+                        <FaHeart className="text-[11px]" />
+                        <span>Yêu thích ({favorites.length})</span>
+                    </button>
+                    {playlists.map((pl) => {
+                        const isActive = activePlaylistTab === pl.id;
+                        return (
+                            <button
+                                key={pl.id}
+                                type="button"
+                                onClick={() => setActivePlaylistTab(pl.id)}
+                                className={`flex items-center gap-2 px-3.5 py-2 rounded-full font-bold text-xs whitespace-nowrap transition border shrink-0 ${isActive ? 'bg-white text-black border-white shadow' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                            >
+                                <span>📁 {pl.title}</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-black/20 text-black' : 'bg-white/10 text-gray-400'}`}>
+                                    {pl.movie_count || 0}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {(activePlaylistTab === 'favorites' ? loadingFavs : loadingPlaylistMovies) ? (
                     <div className="flex justify-center py-20">
                         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-600"></div>
                     </div>
-                ) : favorites.length > 0 ? (
+                ) : (activePlaylistTab === 'favorites' ? favorites : playlistMovies).length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 gap-y-8">
-                        {favorites.map((movie) => (
-                            <div key={movie._id} className="relative group">
+                        {(activePlaylistTab === 'favorites' ? favorites : playlistMovies).map((movie) => (
+                            <div key={movie._id || movie.slug} className="relative group">
                                 <MovieCard movie={movie} />
                                 <button
                                     type="button"
-                                    aria-label={`Gỡ ${movie.name} khỏi tủ phim`}
-                                    title="Gỡ khỏi tủ phim"
+                                    aria-label={`Gỡ ${movie.name} khỏi danh sách`}
+                                    title="Gỡ khỏi danh sách này"
                                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleRemove(movie); }}
                                     className="absolute top-2 right-2 z-[10000] w-8 h-8 flex items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-black/50 ring-1 ring-white/30 hover:bg-red-500 hover:scale-110 active:scale-95 transition cursor-pointer"
                                 >
@@ -684,7 +773,7 @@ const Profile = () => {
                 ) : (
                     <div className="py-20 text-center border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
                         <FaHeart className="text-6xl mx-auto mb-4 text-gray-600 opacity-50"/>
-                        <p className="text-xl font-bold text-gray-400">Tủ phim trống trơn</p>
+                        <p className="text-xl font-bold text-gray-400">Danh sách này đang trống</p>
                         <button onClick={() => navigate('/')} className="mt-6 bg-red-600 px-8 py-3 rounded-full font-bold hover:bg-red-700 transition text-white shadow-lg">
                             Khám phá ngay
                         </button>
