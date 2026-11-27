@@ -6,7 +6,8 @@ import {
     FaUserCircle, FaSave, FaSignOutAlt, FaCamera, FaLock, FaIdCard, 
     FaHeart, FaCloudUploadAlt, FaCheckCircle, FaExclamationCircle, 
     FaImage, FaPen, FaTimes, FaPalette, FaUndo, FaCheck, FaCrown,
-    FaEye, FaEyeSlash, FaPlay, FaSlidersH
+    FaEye, FaEyeSlash, FaPlay, FaSlidersH, FaChevronDown, FaChevronUp,
+    FaArrowUp, FaArrowDown, FaPlus, FaTrash, FaLayerGroup, FaFont, FaList, FaMagic
 } from 'react-icons/fa';
 
 import MovieCard from '../components/movies/MovieCard';
@@ -17,6 +18,7 @@ import { HOME_ROWS } from '../config/menuRows';
 import { useTheme } from '../context/ThemeContext';
 import { calculateLevel, AVATAR_FRAMES } from '../utils/levelUtils';
 import { getPlaylists, getPlaylistMovies, removeMovieFromPlaylist } from '../services/playlistService';
+import { getMenuData } from '../services/movieService';
 
 const CLOUD_NAME = 'dffwgj4x3';
 const UPLOAD_PRESET = 'phimviethay_preset';
@@ -242,177 +244,556 @@ const ThemePreviewBox = ({ theme, accent }) => {
     );
 };
 
-const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset }) => {
-    const list = presets && presets.length > 0 ? presets : FALLBACK_PRESETS;
-    const accent = theme?.accent || '#dc2626';
-    const hiddenRows = theme?.hiddenRows || [];
-    const [customAccent, setCustomAccent] = useState(theme?.accent || '#dc2626');
+const AccordionSection = ({ icon: Icon, title, desc, isOpen, onToggle, accent, badge, children }) => (
+    <div className={`border rounded-2xl transition-all duration-200 overflow-hidden ${isOpen ? 'bg-white/[0.04] border-white/20 shadow-xl' : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04]'}`}>
+        <button
+            type="button"
+            onClick={onToggle}
+            className="w-full p-4 flex items-center justify-between gap-4 text-left transition select-none"
+        >
+            <div className="flex items-center gap-3.5 min-w-0">
+                <span 
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 border transition-transform"
+                    style={{ backgroundColor: `${accent}15`, borderColor: `${accent}40`, color: accent }}
+                >
+                    <Icon />
+                </span>
+                <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-white truncate flex items-center gap-2">
+                        {title}
+                        {badge && (
+                            <span className="text-[10px] px-2 py-0.2 rounded-full font-normal border bg-white/5 border-white/10 text-gray-400">
+                                {badge}
+                            </span>
+                        )}
+                    </h4>
+                    {desc && <p className="text-[11px] text-gray-400 truncate mt-0.5">{desc}</p>}
+                </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider hidden sm:inline">
+                    {isOpen ? 'Thu gọn' : 'Tùy chỉnh'}
+                </span>
+                <span className={`w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : ''}`}>
+                    <FaChevronDown size={11} />
+                </span>
+            </div>
+        </button>
+        {isOpen && (
+            <div className="p-4 pt-2 border-t border-white/5 space-y-5 animate-fade-in">
+                {children}
+            </div>
+        )}
+    </div>
+);
 
-    useEffect(() => { setCustomAccent(theme?.accent || '#dc2626'); }, [theme?.preset]);
+const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset, onSave }) => {
+    const list = presets && presets.length > 0 ? presets : FALLBACK_PRESETS;
+    
+    // Draft theme state: mọi thay đổi chỉ cập nhật local trước
+    const [draftTheme, setDraftTheme] = useState(() => ({ ...theme }));
+    const [customAccent, setCustomAccent] = useState(draftTheme?.accent || '#dc2626');
+    const [openSections, setOpenSections] = useState({
+        palette: true,
+        homeRows: false,
+        shape: false,
+        player: false,
+        typography: false,
+        effects: false
+    });
+
+    // Menu options cho thêm hàng (thể loại / quốc gia)
+    const [availableGenres, setAvailableGenres] = useState([]);
+    const [availableCountries, setAvailableCountries] = useState([]);
+    const [selectedAddType, setSelectedAddType] = useState('the-loai');
+    const [selectedAddSlug, setSelectedAddSlug] = useState('');
+
+    useEffect(() => {
+        getMenuData().then(data => {
+            if (data) {
+                setAvailableGenres(data.theLoai || []);
+                setAvailableCountries(data.quocGia || []);
+            }
+        }).catch(() => {});
+    }, []);
+
+    // Đồng bộ khi theme gốc đổi bên ngoài
+    useEffect(() => {
+        setDraftTheme({ ...theme });
+        setCustomAccent(theme?.accent || '#dc2626');
+    }, [theme]);
+
+    const updateDraft = (updates) => {
+        setDraftTheme(prev => ({ ...prev, ...updates }));
+    };
+
+    const toggleSection = (key) => {
+        setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const hasChanges = useMemo(() => {
+        if (!theme || !draftTheme) return false;
+        const keys = ['preset', 'accent', 'radius', 'buttonShape', 'progressBar', 'fontSize', 'density', 'animations', 'glass'];
+        const changedBasic = keys.some(k => draftTheme[k] !== theme[k]);
+        const changedHidden = JSON.stringify(draftTheme.hiddenRows || []) !== JSON.stringify(theme.hiddenRows || []);
+        const changedCustom = JSON.stringify(draftTheme.customRows || null) !== JSON.stringify(theme.customRows || null);
+        return changedBasic || changedHidden || changedCustom;
+    }, [draftTheme, theme]);
 
     const handleSelectPreset = (preset) => {
-        setTheme({ preset: preset.id, accent: preset.accent });
+        updateDraft({ preset: preset.id, accent: preset.accent });
+        setCustomAccent(preset.accent);
     };
 
     const handleApplyCustomAccent = () => {
         if (/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(customAccent)) {
-            setTheme({ preset: 'custom', accent: customAccent });
+            updateDraft({ preset: 'custom', accent: customAccent });
         }
     };
 
-    const toggleRow = (slug) => {
-        const next = hiddenRows.includes(slug)
-            ? hiddenRows.filter((s) => s !== slug)
-            : [...hiddenRows, slug];
-        setTheme({ hiddenRows: next });
+    // Quản lý Home Rows
+    const currentRows = useMemo(() => {
+        if (Array.isArray(draftTheme?.customRows) && draftTheme.customRows.length > 0) {
+            return draftTheme.customRows;
+        }
+        const hidden = draftTheme?.hiddenRows || [];
+        return HOME_ROWS.map(r => ({
+            title: r.title,
+            slug: r.slug,
+            type: r.type,
+            enabled: !hidden.includes(r.slug)
+        }));
+    }, [draftTheme?.customRows, draftTheme?.hiddenRows]);
+
+    const handleMoveRow = (index, dir) => {
+        const targetIdx = index + dir;
+        if (targetIdx < 0 || targetIdx >= currentRows.length) return;
+        const newRows = [...currentRows];
+        const [moved] = newRows.splice(index, 1);
+        newRows.splice(targetIdx, 0, moved);
+        updateDraft({ customRows: newRows });
     };
 
+    const handleToggleRowEnabled = (index) => {
+        const newRows = currentRows.map((r, i) => i === index ? { ...r, enabled: !r.enabled } : r);
+        updateDraft({ customRows: newRows });
+    };
+
+    const handleRemoveRow = (index) => {
+        const newRows = currentRows.filter((_, i) => i !== index);
+        updateDraft({ customRows: newRows });
+    };
+
+    const handleAddRow = () => {
+        if (!selectedAddSlug) return;
+        const pool = selectedAddType === 'the-loai' ? availableGenres : availableCountries;
+        const found = pool.find(item => item.slug === selectedAddSlug);
+        if (!found) return;
+
+        if (currentRows.some(r => r.slug === found.slug)) {
+            return;
+        }
+
+        const newRow = {
+            title: `Phim ${found.name}`,
+            slug: found.slug,
+            type: selectedAddType,
+            enabled: true
+        };
+        updateDraft({ customRows: [...currentRows, newRow] });
+        setSelectedAddSlug('');
+    };
+
+    const handleResetRows = () => {
+        updateDraft({
+            customRows: HOME_ROWS.map(r => ({ title: r.title, slug: r.slug, type: r.type, enabled: true })),
+            hiddenRows: []
+        });
+    };
+
+    const handleSaveTheme = () => {
+        setTheme(draftTheme);
+        if (onSave) onSave('Đã lưu và áp dụng giao diện thành công!');
+    };
+
+    const handleCancelChanges = () => {
+        setDraftTheme({ ...theme });
+        setCustomAccent(theme?.accent || '#dc2626');
+    };
+
+    const accent = draftTheme?.accent || '#dc2626';
+
     return (
-        <div className="space-y-8">
-            {/* Hộp xem trước trực quan */}
-            <ThemePreviewBox theme={theme} accent={accent} />
-
-            {/* (a) Bảng màu chủ đạo */}
-            <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Màu sắc chủ đạo (Accent Theme)</p>
-                <p className="text-xs text-gray-500 mb-4">Màu này sẽ tạo điểm nhấn cho nút bấm, viền thẻ hover, và biểu tượng rạp phim.</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {list.map((p) => {
-                        const active = theme?.preset === p.id;
-                        return (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => handleSelectPreset(p)}
-                                className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${active ? 'bg-white/10 border-white text-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
-                            >
-                                <span className="w-5 h-5 rounded-full shrink-0 shadow" style={{ backgroundColor: p.accent }} />
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm truncate">{p.name}</p>
-                                </div>
-                                {active && <FaCheck className="text-xs shrink-0 text-white" />}
-                            </button>
-                        );
-                    })}
+        <div className="space-y-6">
+            {/* Thanh thông báo & Nút Lưu thay đổi (Chọn rồi Lưu) */}
+            <div className={`p-4 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-3.5 ${hasChanges ? 'bg-gradient-to-r from-white/10 to-white/5 border-white/30 shadow-2xl ring-1 ring-white/20' : 'bg-white/5 border-white/10'}`}>
+                <div>
+                    <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${hasChanges ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                        <p className="font-bold text-sm text-white">
+                            {hasChanges ? 'Bạn có thay đổi chưa lưu' : 'Giao diện đã đồng bộ'}
+                        </p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        {hasChanges ? 'Xem trước ở hộp bên dưới. Nhấn "Lưu thay đổi" để áp dụng lên toàn trang.' : 'Thay đổi các mục bên dưới để tùy chỉnh giao diện trang web theo sở thích.'}
+                    </p>
                 </div>
-            </div>
-
-            {/* (b) Màu tùy chỉnh Hex */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tự chọn mã màu riêng</p>
-                <div className="flex items-center gap-3">
-                    <input
-                        type="color"
-                        value={customAccent}
-                        onChange={(e) => setCustomAccent(e.target.value)}
-                        className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0"
-                    />
-                    <input
-                        type="text"
-                        value={customAccent}
-                        onChange={(e) => setCustomAccent(e.target.value)}
-                        placeholder="#e50914"
-                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-white/30 outline-none"
-                    />
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    {hasChanges && (
+                        <button
+                            type="button"
+                            onClick={handleCancelChanges}
+                            className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs transition border border-white/10"
+                        >
+                            Hủy
+                        </button>
+                    )}
                     <button
                         type="button"
-                        onClick={handleApplyCustomAccent}
-                        className="px-4 py-2 rounded-lg font-bold text-sm text-white transition active:scale-95"
+                        disabled={!hasChanges}
+                        onClick={handleSaveTheme}
+                        className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg transition flex items-center justify-center gap-2 text-white ${hasChanges ? 'hover:scale-105 active:scale-95 shadow-red-900/30' : 'opacity-40 cursor-not-allowed'}`}
                         style={{ backgroundColor: accent }}
                     >
-                        Áp dụng
+                        <FaCheck size={11} /> Lưu thay đổi
                     </button>
                 </div>
             </div>
 
-            {/* (c) Màu thanh tiến trình Player */}
-            <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Màu thanh tiến trình trình phát (Video Progress Bar)</p>
-                <p className="text-xs text-gray-500 mb-3">Tùy biến dải màu hiển thị khi bạn xem phim trên player.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {PROGRESS_BAR_OPTIONS.map((opt) => {
-                        const selected = (theme?.progressBar || 'accent') === opt.id;
-                        return (
+            {/* Hộp xem trước trực quan (Live Preview Box) */}
+            <ThemePreviewBox theme={draftTheme} accent={accent} />
+
+            {/* Danh sách các mục cài đặt dạng Accordion bật/tắt thu gọn */}
+            <div className="space-y-3.5">
+                {/* 1. Accordion Bảng màu & Preset */}
+                <AccordionSection
+                    icon={FaPalette}
+                    title="Bảng màu & Preset sắc thái"
+                    desc="Chọn màu chủ đạo (Accent) tạo điểm nhấn nút bấm, viền thẻ và hiệu ứng"
+                    isOpen={openSections.palette}
+                    onToggle={() => toggleSection('palette')}
+                    accent={accent}
+                    badge={draftTheme?.preset}
+                >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {list.map((p) => {
+                            const active = draftTheme?.preset === p.id;
+                            return (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => handleSelectPreset(p)}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${active ? 'bg-white/10 border-white text-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                                >
+                                    <span className="w-5 h-5 rounded-full shrink-0 shadow" style={{ backgroundColor: p.accent }} />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm truncate">{p.name}</p>
+                                    </div>
+                                    {active && <FaCheck className="text-xs shrink-0 text-white" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Tự chọn mã màu Hex */}
+                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tự chọn mã màu HEX tùy ý:</p>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="color"
+                                value={customAccent}
+                                onChange={(e) => setCustomAccent(e.target.value)}
+                                className="w-9 h-9 rounded-lg cursor-pointer bg-transparent border-0 shrink-0"
+                            />
+                            <input
+                                type="text"
+                                value={customAccent}
+                                onChange={(e) => setCustomAccent(e.target.value)}
+                                placeholder="#e50914"
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono focus:border-white/30 outline-none"
+                            />
                             <button
-                                key={opt.id}
                                 type="button"
-                                onClick={() => setTheme({ progressBar: opt.id })}
-                                className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${selected ? 'bg-white/10 text-white shadow-lg' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}
-                                style={selected ? { borderColor: accent } : undefined}
+                                onClick={handleApplyCustomAccent}
+                                className="px-4 py-2 rounded-lg font-bold text-xs text-white transition active:scale-95 shrink-0 shadow"
+                                style={{ backgroundColor: accent }}
                             >
-                                <span 
-                                    className="w-4 h-4 rounded-full shrink-0 shadow"
-                                    style={{
-                                        backgroundColor: opt.id === 'crimson' ? '#e50914'
-                                            : opt.id === 'cyberpunk' ? '#ec4899'
-                                            : opt.id === 'emerald' ? '#10b981'
-                                            : opt.id === 'gold' ? '#f59e0b'
-                                            : accent
-                                    }}
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm truncate">{opt.label}</p>
-                                    <p className="text-[11px] text-gray-500">{opt.desc}</p>
-                                </div>
-                                {selected && <FaCheck className="text-xs text-white" />}
+                                Thử màu
                             </button>
-                        );
-                    })}
-                </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+
+                {/* 2. Accordion Sắp xếp hàng ưu tiên Trang Chủ */}
+                <AccordionSection
+                    icon={FaList}
+                    title="Sắp xếp hàng ưu tiên Trang Chủ"
+                    desc="Tự chọn thể loại/quốc gia và sắp xếp hàng yêu thích lên vị trí đầu"
+                    isOpen={openSections.homeRows}
+                    onToggle={() => toggleSection('homeRows')}
+                    accent={accent}
+                    badge={`${currentRows.filter(r => r.enabled).length} hàng đang hiện`}
+                >
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-gray-400">
+                                Dùng nút <strong>↑</strong> và <strong>↓</strong> để di chuyển hàng phim mong muốn lên đầu trang chủ.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleResetRows}
+                                className="text-[11px] font-bold text-gray-400 hover:text-white transition underline"
+                            >
+                                Đặt lại gốc
+                            </button>
+                        </div>
+
+                        {/* Danh sách các hàng có thể sắp xếp */}
+                        <div className="space-y-2">
+                            {currentRows.map((row, idx) => (
+                                <div 
+                                    key={row.slug + idx}
+                                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition ${row.enabled ? 'bg-white/5 border-white/10' : 'bg-black/30 border-white/5 opacity-50'}`}
+                                >
+                                    {/* Nút điều hướng thứ tự */}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                            type="button"
+                                            disabled={idx === 0}
+                                            onClick={() => handleMoveRow(idx, -1)}
+                                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 flex items-center justify-center text-gray-300 disabled:opacity-20 disabled:hover:bg-white/5 transition"
+                                            title="Đưa lên trên"
+                                        >
+                                            <FaArrowUp size={10} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={idx === currentRows.length - 1}
+                                            onClick={() => handleMoveRow(idx, 1)}
+                                            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 flex items-center justify-center text-gray-300 disabled:opacity-20 disabled:hover:bg-white/5 transition"
+                                            title="Đưa xuống dưới"
+                                        >
+                                            <FaArrowDown size={10} />
+                                        </button>
+                                    </div>
+
+                                    {/* Tên hàng & Loại */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-sm text-white truncate">
+                                                {row.title}
+                                            </span>
+                                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-white/10 text-gray-300 shrink-0">
+                                                {row.type === 'quoc-gia' ? 'Quốc gia' : row.type === 'the-loai' ? 'Thể loại' : 'Danh mục'}
+                                            </span>
+                                            {idx === 0 && (
+                                                <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                                                    Ưu tiên số 1
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Bật/Tắt & Xóa */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleRowEnabled(idx)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${row.enabled ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' : 'bg-gray-800 border-white/10 text-gray-500'}`}
+                                        >
+                                            {row.enabled ? 'Hiện' : 'Ẩn'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveRow(idx)}
+                                            className="w-7 h-7 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 flex items-center justify-center transition border border-red-500/30"
+                                            title="Xóa khỏi danh sách"
+                                        >
+                                            <FaTrash size={10} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Thêm hàng thể loại/quốc gia mới */}
+                        <div className="mt-4 p-3.5 bg-black/40 border border-white/10 rounded-xl space-y-3">
+                            <p className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                                <FaPlus size={10} className="text-emerald-400" /> Thêm hàng mới vào Trang Chủ:
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                <select
+                                    value={selectedAddType}
+                                    onChange={(e) => { setSelectedAddType(e.target.value); setSelectedAddSlug(''); }}
+                                    className="sm:col-span-4 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-white/30"
+                                >
+                                    <option value="the-loai" className="bg-[#111] text-white">Thể loại phim</option>
+                                    <option value="quoc-gia" className="bg-[#111] text-white">Quốc gia sản xuất</option>
+                                </select>
+
+                                <select
+                                    value={selectedAddSlug}
+                                    onChange={(e) => setSelectedAddSlug(e.target.value)}
+                                    className="sm:col-span-6 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-white/30"
+                                >
+                                    <option value="" className="bg-[#111] text-gray-400">-- Chọn danh mục cần thêm --</option>
+                                    {(selectedAddType === 'the-loai' ? availableGenres : availableCountries)
+                                        .filter(item => !currentRows.some(r => r.slug === item.slug))
+                                        .map(item => (
+                                            <option key={item.slug} value={item.slug} className="bg-[#111] text-white">
+                                                {item.name}
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+
+                                <button
+                                    type="button"
+                                    disabled={!selectedAddSlug}
+                                    onClick={handleAddRow}
+                                    className="sm:col-span-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow"
+                                >
+                                    <FaPlus size={10} /> Thêm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+
+                {/* 3. Accordion Kiểu dáng Card & Nút bấm */}
+                <AccordionSection
+                    icon={FaLayerGroup}
+                    title="Kiểu dáng Card Phim & Nút bấm"
+                    desc="Tùy biến góc bo riêng biệt cho Card phim và các Nút/Playlist"
+                    isOpen={openSections.shape}
+                    onToggle={() => toggleSection('shape')}
+                    accent={accent}
+                    badge={`${draftTheme?.radius || 'medium'} / ${draftTheme?.buttonShape || 'pill'}`}
+                >
+                    <div className="space-y-4">
+                        <OptionGroup 
+                            label="Kiểu dáng Card Phim" 
+                            options={RADIUS_OPTIONS} 
+                            value={draftTheme?.radius || 'medium'} 
+                            onChange={(v) => updateDraft({ radius: v })} 
+                            accent={accent} 
+                        />
+                        <OptionGroup 
+                            label="Kiểu dáng Nút bấm & Playlist" 
+                            options={BUTTON_SHAPE_OPTIONS} 
+                            value={draftTheme?.buttonShape || 'pill'} 
+                            onChange={(v) => updateDraft({ buttonShape: v })} 
+                            accent={accent} 
+                        />
+                    </div>
+                </AccordionSection>
+
+                {/* 4. Accordion Thanh tiến trình Player */}
+                <AccordionSection
+                    icon={FaPlay}
+                    title="Thanh tiến trình trình phát (Video Player)"
+                    desc="Tùy biến dải màu hiển thị khi bạn xem phim trên player"
+                    isOpen={openSections.player}
+                    onToggle={() => toggleSection('player')}
+                    accent={accent}
+                    badge={draftTheme?.progressBar || 'accent'}
+                >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {PROGRESS_BAR_OPTIONS.map((opt) => {
+                            const selected = (draftTheme?.progressBar || 'accent') === opt.id;
+                            return (
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => updateDraft({ progressBar: opt.id })}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${selected ? 'bg-white/10 text-white shadow-lg' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}
+                                    style={selected ? { borderColor: accent } : undefined}
+                                >
+                                    <span 
+                                        className="w-4 h-4 rounded-full shrink-0 shadow"
+                                        style={{
+                                            backgroundColor: opt.id === 'crimson' ? '#e50914'
+                                                : opt.id === 'cyberpunk' ? '#ec4899'
+                                                : opt.id === 'emerald' ? '#10b981'
+                                                : opt.id === 'gold' ? '#f59e0b'
+                                                : accent
+                                        }}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm truncate">{opt.label}</p>
+                                        <p className="text-[11px] text-gray-500">{opt.desc}</p>
+                                    </div>
+                                    {selected && <FaCheck className="text-xs text-white" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </AccordionSection>
+
+                {/* 5. Accordion Cỡ chữ & Mật độ */}
+                <AccordionSection
+                    icon={FaFont}
+                    title="Cỡ chữ & Mật độ hiển thị"
+                    desc="Điều chỉnh kích thước chữ toàn hệ thống và khoảng cách giữa các thẻ phim"
+                    isOpen={openSections.typography}
+                    onToggle={() => toggleSection('typography')}
+                    accent={accent}
+                >
+                    <div className="space-y-4">
+                        <OptionGroup 
+                            label="Cỡ chữ toàn hệ thống" 
+                            options={FONT_SIZE_OPTIONS} 
+                            value={draftTheme?.fontSize || 'medium'} 
+                            onChange={(v) => updateDraft({ fontSize: v })} 
+                            accent={accent} 
+                        />
+                        <OptionGroup 
+                            label="Mật độ hiển thị lưới phim" 
+                            options={DENSITY_OPTIONS} 
+                            value={draftTheme?.density || 'comfortable'} 
+                            onChange={(v) => updateDraft({ density: v })} 
+                            accent={accent} 
+                        />
+                    </div>
+                </AccordionSection>
+
+                {/* 6. Accordion Hiệu ứng */}
+                <AccordionSection
+                    icon={FaMagic}
+                    title="Hiệu ứng chuyển động & Kính mờ"
+                    desc="Bật tắt animation mượt và hiệu ứng nền trong suốt Glassmorphism"
+                    isOpen={openSections.effects}
+                    onToggle={() => toggleSection('effects')}
+                    accent={accent}
+                >
+                    <div className="space-y-1">
+                        <ToggleRow 
+                            label="Animation mượt" 
+                            desc="Hiệu ứng chuyển động khi chuyển slide, hover card" 
+                            checked={draftTheme?.animations !== false} 
+                            onChange={(v) => updateDraft({ animations: v })} 
+                            accent={accent} 
+                        />
+                        <ToggleRow 
+                            label="Hiệu ứng kính mờ (Glassmorphism)" 
+                            desc="Nền mờ trên dropdown, popup và thanh công cụ" 
+                            checked={draftTheme?.glass !== false} 
+                            onChange={(v) => updateDraft({ glass: v })} 
+                            accent={accent} 
+                        />
+                    </div>
+                </AccordionSection>
             </div>
 
-            {/* (d) Bo góc card */}
-            <OptionGroup label="Kiểu dáng Card Phim" options={RADIUS_OPTIONS} value={theme?.radius || 'medium'} onChange={(v) => setTheme({ radius: v })} accent={accent} />
-
-            {/* (d2) Kiểu dáng Nút bấm & Playlist */}
-            <OptionGroup label="Kiểu dáng Nút bấm & Playlist" options={BUTTON_SHAPE_OPTIONS} value={theme?.buttonShape || 'pill'} onChange={(v) => setTheme({ buttonShape: v })} accent={accent} />
-
-            {/* (e) Cỡ chữ */}
-            <OptionGroup label="Cỡ chữ toàn hệ thống" options={FONT_SIZE_OPTIONS} value={theme?.fontSize || 'medium'} onChange={(v) => setTheme({ fontSize: v })} accent={accent} />
-
-            {/* (f) Mật độ hiển thị */}
-            <OptionGroup label="Mật độ hiển thị lưới phim" options={DENSITY_OPTIONS} value={theme?.density || 'comfortable'} onChange={(v) => setTheme({ density: v })} accent={accent} />
-
-            {/* (g) Ẩn/hiện hàng trang chủ */}
-            <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Hàng hiển thị trên trang chủ</p>
-                <p className="text-xs text-gray-500 mb-3">Bỏ tick để ẩn một hàng khỏi trang chủ. Hàng đã ẩn vẫn xem được qua menu.</p>
-                <div className="space-y-2">
-                    {HOME_ROWS.map((row) => {
-                        const visible = !hiddenRows.includes(row.slug);
-                        return (
-                            <label key={row.slug} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 cursor-pointer hover:bg-white/10 transition">
-                                <input
-                                    type="checkbox"
-                                    checked={visible}
-                                    onChange={() => toggleRow(row.slug)}
-                                    className="w-4 h-4 accent-red-600 cursor-pointer"
-                                />
-                                <span className={`text-sm font-bold ${visible ? 'text-white' : 'text-gray-500 line-through'}`}>{row.title}</span>
-                                {!visible && <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-gray-400">ĐÃ ẨN</span>}
-                            </label>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* (h) Hiệu ứng */}
-            <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Hiệu ứng chuyển động & kính mờ</p>
-                <ToggleRow label="Animation mượt" desc="Hiệu ứng chuyển động khi chuyển slide, hover card" checked={theme?.animations !== false} onChange={(v) => setTheme({ animations: v })} accent={accent} />
-                <ToggleRow label="Hiệu ứng kính mờ (Glassmorphism)" desc="Nền mờ trên dropdown, popup và thanh công cụ" checked={theme?.glass !== false} onChange={(v) => setTheme({ glass: v })} accent={accent} />
-            </div>
-
-            {/* (i) Đặt lại mặc định */}
-            <div className="pt-2 border-t border-white/10">
+            {/* Nút đặt lại mặc định toàn bộ */}
+            <div className="pt-2 flex items-center justify-between">
                 <button
                     type="button"
                     onClick={() => { resetTheme(); if (onReset) onReset(); }}
-                    className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2 active:scale-95"
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-2 active:scale-95 text-xs"
                 >
-                    <FaUndo className="text-xs" /> Đặt lại mặc định
+                    <FaUndo className="text-xs" /> Đặt lại mặc định toàn bộ
                 </button>
-                <p className="text-xs text-gray-500 mt-2">Về bộ màu Đỏ Đô mặc định cùng các tùy chọn gốc.</p>
             </div>
         </div>
     );
@@ -670,14 +1051,12 @@ const Profile = () => {
                 {/* Thông tin hồ sơ hiển thị dưới chân banner */}
                 <div className="absolute bottom-0 left-0 w-full container mx-auto px-4 md:px-12 pb-5 flex flex-col md:flex-row items-center md:items-end gap-6 z-10">
                     <div className="relative group/avatar">
-                        <div className="p-1 rounded-full">
-                            <UserAvatar 
-                                user={user} 
-                                frame={user.current_frame} 
-                                className="w-28 h-28 md:w-36 md:h-36 bg-[#0a0e17]" 
-                                fontSize="text-4xl" 
-                            />
-                        </div>
+                        <UserAvatar 
+                            user={user} 
+                            frame={user.current_frame} 
+                            className="w-28 h-28 md:w-36 md:h-36" 
+                            fontSize="text-4xl" 
+                        />
                         <button 
                             onClick={() => openEditTab('avatar')} 
                             className="absolute bottom-1 right-1 bg-[#222] text-white p-2.5 rounded-full shadow-lg border border-white/20 hover:bg-white hover:text-black transition transform hover:scale-110"
@@ -846,6 +1225,7 @@ const Profile = () => {
                         resetTheme={resetTheme} 
                         presets={themePresets} 
                         onReset={() => setToast({ type: 'success', message: 'Đã đặt lại giao diện mặc định.' })} 
+                        onSave={(msg) => setToast({ type: 'success', message: msg })}
                     />
                 </div>
             </div>
@@ -987,8 +1367,8 @@ const Profile = () => {
                                                                 }}
                                                                 className={`p-3 rounded-xl border transition flex items-center gap-3 relative ${isUnlocked ? 'cursor-pointer hover:bg-white/10' : 'opacity-40 cursor-not-allowed bg-black/40'} ${isSelected ? 'border-yellow-400 bg-white/10 shadow-lg' : 'border-white/10 bg-white/5'}`}
                                                             >
-                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gray-800 ${f.ringClass}`}>
-                                                                    <UserAvatar user={{ fullname: formData.fullname, avatar: formData.avatar }} className="w-8 h-8" />
+                                                                <div className="w-10 h-10 flex items-center justify-center relative">
+                                                                    <UserAvatar user={{ fullname: formData.fullname, avatar: formData.avatar, current_frame: f.id }} frame={f.id} className="w-8 h-8" />
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="font-bold text-xs text-white truncate">{f.name}</p>
@@ -1129,6 +1509,7 @@ const Profile = () => {
                                             resetTheme={resetTheme} 
                                             presets={themePresets} 
                                             onReset={() => setToast({ type: 'success', message: 'Đã đặt lại giao diện mặc định.' })} 
+                                            onSave={(msg) => setToast({ type: 'success', message: msg })}
                                         />
                                     )}
                                 </form>

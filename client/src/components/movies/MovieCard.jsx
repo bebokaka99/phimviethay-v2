@@ -52,6 +52,11 @@ const MovieCard = memo(({ movie }) => {
     const ratingVal = Number(movie.tmdb?.vote_average || movie.vote_average || 0);
     const displayRating = ratingVal > 0 ? ratingVal.toFixed(1) : null;
     const year = movie.year || null; // Chỉ hiện năm khi có dữ liệu thật (vd Lịch sử không lưu năm → ẩn badge, không hiện "Unknown" hay tên thể loại).
+    const displayEpisode = movie.episode_current 
+        || movie.episode_name 
+        || (movie.tmdb?.type === 'tv' 
+            ? (movie.tmdb?.season ? `Phần ${movie.tmdb.season}` : 'Phim Bộ') 
+            : 'Full');
     const posterUrl = `${IMG_URL}${movie.thumb_url}`;
     const backdropUrl = movie.poster_url && movie.poster_url.includes('http') ? movie.poster_url : posterUrl;
 
@@ -221,13 +226,13 @@ const MovieCard = memo(({ movie }) => {
                         </span>
                     </div>
                     {displayRating && (<div className="absolute top-2 right-2"><span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">{displayRating} <FaStar size={8} /></span></div>)}
-                    {(movie.episode_current || movie.episode_name) && (
+                    {displayEpisode && (
                         <div className="absolute bottom-2 right-2 z-10">
                             <span 
                                 style={{ backgroundColor: 'var(--accent, #dc2626)' }}
                                 className="text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md backdrop-blur-sm border border-white/20"
                             >
-                                {movie.episode_current || movie.episode_name}
+                                {displayEpisode}
                             </span>
                         </div>
                     )}

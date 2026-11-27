@@ -27,13 +27,13 @@ const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize 
     };
 
     return (
-        <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
+        <div className={`relative inline-flex items-center justify-center shrink-0 rounded-full ${className}`}>
             {/* 1. Nếu có link ảnh -> Hiển thị ảnh */}
             {user?.avatar && user.avatar.trim() !== "" ? (
                 <img 
                     src={user.avatar} 
                     alt={name} 
-                    className="w-full h-full rounded-full object-cover bg-gray-800 transition-all border border-white/10" 
+                    className="w-full h-full rounded-full object-cover transition-all" 
                     onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
@@ -43,7 +43,7 @@ const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize 
 
             {/* 2. Fallback nếu ảnh lỗi hoặc không có ảnh */}
             <div 
-                className={`w-full h-full rounded-full flex items-center justify-center font-bold text-white shadow-md transition-all border border-white/10 ${getColor(name)}`}
+                className={`w-full h-full rounded-full flex items-center justify-center font-bold text-white shadow-md transition-all ${getColor(name)}`}
                 style={user?.avatar ? { display: 'none' } : {}}
             >
                 <span className={fontSize}>{getInitials(name)}</span>

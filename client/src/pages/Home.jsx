@@ -24,7 +24,10 @@ const Home = () => {
   let themeApi = null;
   try { themeApi = useTheme(); } catch (e) { themeApi = null; }
   const hiddenRows = themeApi?.theme?.hiddenRows || [];
-  const visibleRows = ROW_CONFIG.filter((row) => !hiddenRows.includes(row.slug));
+  const customRows = themeApi?.theme?.customRows;
+  const visibleRows = Array.isArray(customRows) && customRows.length > 0
+      ? customRows.filter((row) => row.enabled !== false)
+      : ROW_CONFIG.filter((row) => !hiddenRows.includes(row.slug));
 
   useEffect(() => {
     const fetchPriorityData = async () => {

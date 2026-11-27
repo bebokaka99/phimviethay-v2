@@ -42,6 +42,7 @@ export const DEFAULT_THEME = Object.freeze({
     fontSize: 'medium',     // small | medium | large
     density: 'comfortable', // compact | comfortable
     hiddenRows: [],
+    customRows: null,       // Danh sách hàng tùy biến thứ tự & hiển thị trên trang chủ
     animations: true,
     glass: true,
     progressBar: 'accent',  // accent | crimson | cyberpunk | emerald | gold
