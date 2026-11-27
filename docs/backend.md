@@ -120,14 +120,18 @@ xem — backend KHÔNG gọi vsmov để lấy tên phim**, frontend tự map sl
   `file: '...m3u8'` (JS) → `sources: [{ file: ... }]` → dựng từ
   `baseUrl + '/stream/' + videoHash + '/master.m3u8'` → bất kỳ URL `.m3u8`
   nào trong trang (ưu tiên URL có query/signature).
-- **Cache in-memory 5 phút theo URL embed** (`CACHE_TTL_MS = 5 * 60 * 1000`):
-  m3u8 có ký, hết hạn nhanh nên không lưu DB, không cache lâu hơn.
+- **Cache in-memory 30 phút theo URL embed** (`CACHE_TTL_MS = 30 * 60 * 1000`),
+  tự động prune dọn dẹp khi cache vượt quá 500 bản ghi. Kèm header response
+  `Cache-Control: public, max-age=1800, stale-while-revalidate=300` giúp trình duyệt
+  phía client và CDN cache lại kết quả, mở phim gần như tức thì.
 - Trả: `{ m3u8, subtitles: [{ file, label, code }] }`. `subtitles` parse từ
   mảng `subtitles` trong HTML trang embed (file `.vtt`, thường `vie` + `eng`,
   label Tiếng Việt / English / ... theo bảng `SUBTITLE_LABELS` trong
   controller); URL tương đối được resolve thành tuyệt đối theo origin trang
   embed. Không có sub → `[]`, player vẫn chạy bình thường.
-- User-Agent khi fetch trang embed: Chrome 120 trên Windows 10.
+- Giả lập trình duyệt chống chặn: Header đầy đủ (`Sec-Ch-Ua`, `Sec-Fetch-*`,
+  `Accept-Language`, `Referer`, Chrome 131) + cơ chế tự động retry (tối đa 2 lần,
+  backoff 400ms) khi mạng chập chờn hoặc vsmov phản hồi chậm.
 
 ### `GET /api/player-key` — public, không cần login
 (`server/src/routes/playerKeyRoutes.js` → `settingsController.getPlayerKey`)

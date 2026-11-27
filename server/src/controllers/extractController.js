@@ -1,16 +1,43 @@
-// Controller tách URL m3u8 từ trang embed của vsmov (23/11/2026).
+// Controller tách URL m3u8 từ trang embed của vsmov.
 // Bối cảnh: API vsmov CHỈ trả link_embed (field link_m3u8 luôn null),
 // muốn có m3u8 phải fetch HTML trang embed rồi parse URL m3u8 trong
-// cấu hình JWPlayer của trang đó. m3u8 có ký, hết hạn nhanh nên
-// KHÔNG lưu DB — chỉ cache in-memory tối đa 5 phút theo URL embed.
-const USER_AGENT =
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+// cấu hình JWPlayer của trang đó.
+// Cache in-memory 30 phút theo URL embed để tránh gọi lại vsmov liên tục,
+// kèm header giả lập trình duyệt và cơ chế retry khi mạng chập chờn.
+const BROWSER_HEADERS = {
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept':
+        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'iframe',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'cross-site',
+    'Upgrade-Insecure-Requests': '1',
+    'Cache-Control': 'max-age=0'
+};
 
 const FETCH_TIMEOUT_MS = 10000;
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 phút
 
-// Cache in-memory: embedUrl -> { m3u8, expiresAt }
+// Cache in-memory: embedUrl -> { m3u8, subtitles, expiresAt }
 const cache = new Map();
+
+function pruneCache() {
+    const now = Date.now();
+    for (const [key, val] of cache.entries()) {
+        if (!val || val.expiresAt <= now) {
+            cache.delete(key);
+        }
+    }
+    if (cache.size > 500) {
+        const oldestKeys = Array.from(cache.keys()).slice(0, 100);
+        for (const k of oldestKeys) cache.delete(k);
+    }
+}
 
 // Host embed hợp lệ: host thực tế đo được 23/11/2026 là
 // v10.streamvsmov.com (dạng v<so>.streamvsmov.com). Chấp nhận mọi
@@ -159,36 +186,48 @@ async function extractM3u8(req, res) {
         return res.status(400).json({ error: 'URL embed không thuộc vsmov' });
     }
 
-    // Cache 5 phút theo URL embed (m3u8 hết hạn nhanh nên không cache lâu hơn).
+    // Cache 30 phút theo URL embed để giảm tải tối đa và chống nghẽn.
     const now = Date.now();
     const cached = cache.get(embed);
     if (cached && cached.expiresAt > now) {
+        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
         return res.json({ m3u8: cached.m3u8, subtitles: cached.subtitles || [] });
     }
     cache.delete(embed);
 
-    let html;
-    try {
+    let html = null;
+    const fetchHeaders = {
+        ...BROWSER_HEADERS,
+        'Referer': `${embedUrl.origin}/`,
+    };
+
+    // Retry tối đa 2 lần với backoff 400ms nếu vsmov phản hồi chậm hoặc lỗi mạng
+    for (let attempt = 1; attempt <= 2; attempt++) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-        let response;
         try {
-            response = await fetch(embed, {
-                headers: { 'User-Agent': USER_AGENT },
+            const response = await fetch(embed, {
+                headers: fetchHeaders,
                 signal: controller.signal,
                 redirect: 'follow',
             });
+            if (response.ok) {
+                html = await response.text();
+                break;
+            }
+        } catch (err) {
+            if (attempt === 2) {
+                break;
+            }
         } finally {
             clearTimeout(timer);
         }
-        if (!response.ok) {
-            return res.status(404).json({ error: 'Không tách được m3u8' });
+        if (attempt === 1) {
+            await new Promise((resolve) => setTimeout(resolve, 400));
         }
-        html = await response.text();
-    } catch (err) {
-        if (err && err.name === 'AbortError') {
-            return res.status(404).json({ error: 'Không tách được m3u8' });
-        }
+    }
+
+    if (!html) {
         return res.status(404).json({ error: 'Không tách được m3u8' });
     }
 
@@ -201,7 +240,12 @@ async function extractM3u8(req, res) {
     // Không có sub thì trả [] — player vẫn chạy bình thường, chỉ không có track.
     const subtitles = parseSubtitles(html, embedUrl.origin);
 
+    if (cache.size > 500) {
+        pruneCache();
+    }
     cache.set(embed, { m3u8, subtitles, expiresAt: now + CACHE_TTL_MS });
+
+    res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=300');
     return res.json({ m3u8, subtitles });
 }
 
