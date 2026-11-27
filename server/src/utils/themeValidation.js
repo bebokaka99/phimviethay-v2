@@ -26,6 +26,7 @@ const ALLOWED_THEME_KEYS = [
     'hiddenRows',
     'animations',
     'glass',
+    'progressBar',
 ];
 
 const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -60,7 +61,7 @@ function validateTheme(theme) {
         clean.accent = theme.accent;
     }
 
-    for (const key of ['radius', 'fontSize', 'density']) {
+    for (const key of ['radius', 'fontSize', 'density', 'progressBar']) {
         if (theme[key] !== undefined) {
             if (typeof theme[key] !== 'string' || theme[key].trim() === '') {
                 return { valid: false, error: `${key} phải là chuỗi không rỗng.`, theme: null };

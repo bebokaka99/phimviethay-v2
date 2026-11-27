@@ -2099,7 +2099,7 @@ html {
   .jw-slider-time
   .jw-slider-container
   .jw-progress {
-  background-color: var(--bg-primary);
+  background: var(--player-progress-color, var(--accent, #e50914)) !important;
 }
 
 .jw-skin-pom .jw-slider-horizontal .jw-buffer,

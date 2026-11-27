@@ -83,17 +83,20 @@ class User {
 
     static async findById(id) {
         try {
-            const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, theme, role, banned_until FROM users WHERE id = ?', [id]);
+            const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, theme, role, banned_until, banner_url, is_public, exp, current_frame FROM users WHERE id = ?', [id]);
             return withParsedTheme(rows[0]);
         } catch (e) {
-            // DB chưa migrate 003 (chưa có cột theme): đọc lại không có
-            // cột theme để getMe/login vẫn chạy, theme trả về null.
-            // Xem database/migrations/003_add_user_theme.sql — chạy
-            // `npm run migrate` trong server/ để thêm cột.
+            // DB cũ chưa có các cột mới: đọc lại không có cột mới
             if (e && e.code === 'ER_BAD_FIELD_ERROR') {
                 const [rows] = await db.execute('SELECT id, username, fullname, email, avatar, role, banned_until FROM users WHERE id = ?', [id]);
                 const row = rows[0];
-                if (row) row.theme = null;
+                if (row) {
+                    row.theme = null;
+                    row.banner_url = null;
+                    row.is_public = 1;
+                    row.exp = 0;
+                    row.current_frame = 'default';
+                }
                 return row;
             }
             throw e;
@@ -120,6 +123,22 @@ class User {
         // Thêm update google_id nếu cần link tài khoản sau này
         if (data.google_id) { fields.push('google_id = ?'); values.push(data.google_id); }
         if (data.auth_type) { fields.push('auth_type = ?'); values.push(data.auth_type); }
+        if (Object.prototype.hasOwnProperty.call(data, 'banner_url')) {
+            fields.push('banner_url = ?');
+            values.push(data.banner_url || null);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'is_public')) {
+            fields.push('is_public = ?');
+            values.push(data.is_public ? 1 : 0);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'exp')) {
+            fields.push('exp = ?');
+            values.push(Number(data.exp) || 0);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'current_frame')) {
+            fields.push('current_frame = ?');
+            values.push(data.current_frame || 'default');
+        }
         // Theme: dùng 'theme' in data (không check truthy) để cho phép
         // ghi null (= xóa theme về mặc định). Object -> JSON string.
         if (data && Object.prototype.hasOwnProperty.call(data, 'theme')) {

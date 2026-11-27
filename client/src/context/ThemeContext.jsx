@@ -43,6 +43,7 @@ export const DEFAULT_THEME = Object.freeze({
     hiddenRows: [],
     animations: true,
     glass: true,
+    progressBar: 'accent',  // accent | crimson | cyberpunk | emerald | gold
 });
 
 // 6 preset tối: accent + background + surface + text trắng + textMuted + border.
@@ -216,6 +217,13 @@ export function applyTheme(resolved) {
     el.style.setProperty('--card-radius', resolved.radiusPx);
     el.style.setProperty('--font-size-base', resolved.fontSizePx);
     el.style.setProperty('--card-gap', resolved.gapPx);
+    const pb = resolved.progressBar || 'accent';
+    const pbColor = pb === 'crimson' ? '#e50914'
+        : pb === 'cyberpunk' ? 'linear-gradient(90deg, #ec4899, #8b5cf6)'
+        : pb === 'emerald' ? '#10b981'
+        : pb === 'gold' ? '#f59e0b'
+        : resolved.accent;
+    el.style.setProperty('--player-progress-color', pbColor);
     el.setAttribute('data-density', resolved.density === 'compact' ? 'compact' : 'comfortable');
     el.setAttribute('data-animations', resolved.animations === false ? 'off' : 'on');
     el.setAttribute('data-glass', resolved.glass === false ? 'off' : 'on');

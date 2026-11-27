@@ -84,6 +84,10 @@ exports.login = async (req, res) => {
                 email: user.email,
                 avatar: user.avatar,
                 role: user.role,
+                banner_url: user.banner_url ?? null,
+                is_public: user.is_public ?? 1,
+                exp: user.exp ?? 0,
+                current_frame: user.current_frame ?? 'default',
                 theme: user.theme ?? null
             }
         });
@@ -110,6 +114,10 @@ exports.getMe = async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             role: user.role,
+            banner_url: user.banner_url ?? null,
+            is_public: user.is_public ?? 1,
+            exp: user.exp ?? 0,
+            current_frame: user.current_frame ?? 'default',
             // Theme đã parse trong User.findById: object hoặc null
             // (null = chưa lưu theme, dùng mặc định).
             theme: user.theme ?? null

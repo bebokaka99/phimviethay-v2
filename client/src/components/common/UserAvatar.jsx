@@ -1,8 +1,12 @@
 import React from 'react';
+import { AVATAR_FRAMES } from '../../utils/levelUtils';
 
-const UserAvatar = ({ user, className = "w-10 h-10", fontSize = "text-sm" }) => {
+const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize = "text-sm" }) => {
     // Lấy tên hiển thị (Ưu tiên fullname, nếu không có lấy username)
     const name = user?.fullname || user?.username || "?";
+    const frameId = propFrame || user?.current_frame || 'default';
+    const frameObj = AVATAR_FRAMES.find(f => f.id === frameId) || AVATAR_FRAMES[0];
+    const ringClass = frameObj?.ringClass || 'border border-white/10';
     
     // 1. Nếu có link ảnh -> Hiển thị ảnh
     if (user?.avatar && user.avatar.trim() !== "") {
@@ -10,7 +14,7 @@ const UserAvatar = ({ user, className = "w-10 h-10", fontSize = "text-sm" }) => 
             <img 
                 src={user.avatar} 
                 alt={name} 
-                className={`${className} rounded-full object-cover border border-white/10 bg-gray-800`} 
+                className={`${className} rounded-full object-cover bg-gray-800 transition-all ${ringClass}`} 
                 onError={(e) => {
                     // Nếu link ảnh bị lỗi (404), tự động ẩn ảnh đi để hiện chữ bên dưới (fallback)
                     e.target.style.display = 'none';
@@ -42,7 +46,7 @@ const UserAvatar = ({ user, className = "w-10 h-10", fontSize = "text-sm" }) => 
     // Render Avatar Chữ (Fallback nếu ảnh lỗi hoặc không có ảnh)
     return (
         <div 
-            className={`${className} rounded-full flex items-center justify-center font-bold text-white border border-white/10 shadow-md ${getColor(name)}`}
+            className={`${className} rounded-full flex items-center justify-center font-bold text-white shadow-md transition-all ${ringClass} ${getColor(name)}`}
             // Style này để đảm bảo nó ẩn đi nếu ảnh load thành công (logic onError ở trên)
             style={user?.avatar ? { display: 'none' } : {}}
         >

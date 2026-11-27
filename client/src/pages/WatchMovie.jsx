@@ -155,6 +155,11 @@ giữa vẫn thấy). */
 .bc-dual-subs .bc-dual-cue u {
   text-decoration: underline !important;
 }
+/* Player progress bar color customization */
+.jwplayer .jw-progress,
+.jwplayer.jw-skin-pom .jw-progress {
+  background: var(--player-progress-color, var(--accent, #e50914)) !important;
+}
 /* Fix 2+4 (24/11/2026) — panel phụ đề/cài đặt là Bootstrap dropdown mở
 xuống dưới rồi bị #rp-player{overflow:hidden} cắt; .player-dm gốc chỉ có
 overflow:hidden (player.css:541) + .dm-sub có max-height:60vh nhưng KHÔNG

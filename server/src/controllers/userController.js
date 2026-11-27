@@ -39,11 +39,15 @@ exports.checkFavorite = async (req, res) => {
 // --- PROFILE ---
 exports.updateProfile = async (req, res) => {
     try {
-        const { fullname, password, avatar } = req.body;
+        const { fullname, password, avatar, banner_url, is_public, current_frame, exp } = req.body;
         const updateData = {};
         
-        if (fullname) updateData.fullname = fullname;
-        if (avatar) updateData.avatar = avatar; // Lưu ý: Render không lưu file upload, avatar này phải là link ảnh (từ Cloud)
+        if (fullname !== undefined) updateData.fullname = fullname;
+        if (avatar !== undefined) updateData.avatar = avatar;
+        if (banner_url !== undefined) updateData.banner_url = banner_url;
+        if (is_public !== undefined) updateData.is_public = is_public ? 1 : 0;
+        if (current_frame !== undefined) updateData.current_frame = current_frame;
+        if (exp !== undefined) updateData.exp = Number(exp) || 0;
         
         if (password) {
             const salt = await bcrypt.genSalt(10);
@@ -55,7 +59,53 @@ exports.updateProfile = async (req, res) => {
         // Lấy lại info mới nhất để trả về Client cập nhật state
         const updatedUser = await User.findById(req.user.id);
         res.json({ message: 'Cập nhật thành công!', user: updatedUser });
-    } catch (error) { res.status(500).json({ message: 'Lỗi cập nhật hồ sơ' }); }
+    } catch (error) { 
+        console.error('UpdateProfile Error:', error);
+        res.status(500).json({ message: 'Lỗi cập nhật hồ sơ' }); 
+    }
+};
+
+// [MỚI] Xem hồ sơ công khai của một user khác (phục vụ diễn đàn / chia sẻ)
+exports.getPublicProfile = async (req, res) => {
+    try {
+        const { identifier } = req.params;
+        let user = null;
+        if (/^\d+$/.test(identifier)) {
+            user = await User.findById(Number(identifier));
+        } else {
+            user = await User.findByCredentials(identifier);
+        }
+
+        if (!user) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        }
+
+        if (!user.is_public) {
+            return res.json({
+                id: user.id,
+                username: user.username,
+                avatar: user.avatar,
+                is_public: 0,
+                message: 'Hồ sơ này đang ở chế độ riêng tư'
+            });
+        }
+
+        res.json({
+            id: user.id,
+            username: user.username,
+            fullname: user.fullname,
+            avatar: user.avatar,
+            banner_url: user.banner_url ?? null,
+            role: user.role,
+            exp: user.exp ?? 0,
+            current_frame: user.current_frame ?? 'default',
+            is_public: 1,
+            created_at: user.created_at
+        });
+    } catch (error) {
+        console.error('GetPublicProfile Error:', error);
+        res.status(500).json({ message: 'Lỗi lấy hồ sơ công khai' });
+    }
 };
 
 // --- THEME (Custom UI, 23/11/2026) ---
