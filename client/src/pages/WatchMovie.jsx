@@ -38,10 +38,10 @@ const JWPLAYER_JS = '/jwplayer/jwplayer-8.9.3.js';
 const ORIGIN_JS = '/jwplayer/origin.js';
 const PLAYER_CSS = '/jwplayer/player.css';
 const BROADCAST_CSS = '/jwplayer/broadcast-player.css';
-const JQUERY_JS = 'https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js';
-const BOOTSTRAP_JS = 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js';
-const FA_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css';
-const PLAYER_FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap';
+const JQUERY_JS = '/vendor/jquery.min.js';
+const BOOTSTRAP_JS = '/vendor/bootstrap.bundle.min.js';
+const FA_CSS = '/vendor/fontawesome/css/all.min.css';
+const PLAYER_FONTS_CSS = '/vendor/fonts/player-fonts.css';
 
 // Guard: player.css/broadcast-player.css là CSS của TRANG EMBED standalone
 // nên có vài rule toàn cục (body height 100vh + overflow hidden = khóa cuộn
