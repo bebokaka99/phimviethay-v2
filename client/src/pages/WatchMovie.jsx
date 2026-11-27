@@ -354,6 +354,7 @@ const startBootController = () => {
 };
 import { getMovieDetail, getMoviesBySlug, getMoviePeoples, IMG_URL } from '../services/movieService';
 import { setWatchHistory, checkFavoriteStatus, toggleFavorite } from '../services/authService';
+import { saveWatchProgress, getSavedProgress } from '../components/movies/ContinueWatchingRow';
 import logoImg from '../assets/logo.png';
 
 // --- mapSubtitleTracks (inline từ playerLogic.js — bản viết lại đã xóa) ---
@@ -741,6 +742,43 @@ const WatchMovie = () => {
         };
     }, []);
 
+    // Lưu và khôi phục tiến trình xem (phút:giây) trên trình duyệt
+    const attachProgressTracking = (p, movieSlug, epSlug) => {
+        if (!p || typeof p.on !== 'function' || !movieSlug) return;
+        const saved = getSavedProgress(movieSlug, epSlug);
+        if (saved && saved.currentTime > 10) {
+            let sought = false;
+            const doSeek = () => {
+                if (sought) return;
+                sought = true;
+                try {
+                    const dur = p.getDuration ? p.getDuration() : 0;
+                    if (saved.currentTime < (dur || Infinity) - 15) {
+                        p.seek(saved.currentTime);
+                    }
+                } catch (err) {}
+            };
+            p.once('play', () => { setTimeout(doSeek, 600); });
+        }
+
+        let lastSave = 0;
+        p.on('time', (e) => {
+            const now = Date.now();
+            if (now - lastSave > 5000 && e.position > 5) {
+                lastSave = now;
+                saveWatchProgress(movieSlug, epSlug, e.position, e.duration);
+            }
+        });
+
+        p.on('pause', () => {
+            try {
+                const pos = p.getPosition ? p.getPosition() : 0;
+                const dur = p.getDuration ? p.getDuration() : 0;
+                if (pos > 5) saveWatchProgress(movieSlug, epSlug, pos, dur);
+            } catch {}
+        });
+    };
+
     // Mở tập / đổi tập: lấy m3u8 + sub rồi setup (tập đầu) hoặc load() (đổi tập).
     useEffect(() => {
         if (!currentEpisode?.link_embed) return undefined;
@@ -782,6 +820,7 @@ const WatchMovie = () => {
                     originExecutedRef.current = true;
                     const p = window.jwplayer('player');
                     p.on('ready', () => { jwReadyRef.current = true; });
+                    attachProgressTracking(p, movie?.slug, currentEpisode?.slug);
                     p.on('setupError', (e) => {
                         // Setup hỏng (vd key lỗi 100011): gỡ player hỏng + reset
                         // cờ để nút "Thử lại" chạy lại toàn bộ setup thay vì
@@ -808,6 +847,7 @@ const WatchMovie = () => {
                     const p = window.jwplayer('player');
                     p.load({ file: data.m3u8, type: 'hls', autostart: true, tracks });
                     p.play();
+                    attachProgressTracking(p, movie?.slug, currentEpisode?.slug);
                     if (!mountPlayerBrand()) startBrandPoller();
                     startPlayerMenuFixes();
                 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, Suspense } from 'react'; // Import Suspense
 import { Helmet } from 'react-helmet-async';
 import HeroSection from '../components/movies/HeroSection';
+import ContinueWatchingRow from '../components/movies/ContinueWatchingRow';
 // Load Lazy Component để tách bundle
 const LazyMovieRow = React.lazy(() => import('../components/movies/LazyMovieRow'));
 import { HomeSkeleton, RowSkeleton } from '../components/common/Skeleton'; // Import thêm RowSkeleton
@@ -55,6 +56,9 @@ const Home = () => {
       
       {/* Lazy Load Rows */}
       <div className="relative z-10 px-0 space-y-2 md:space-y-4 pb-10 mt-8 md:mt-12 bg-gradient-to-b from-phim-dark/0 via-phim-dark to-phim-dark">
+            {/* Hàng Tiếp Tục Xem (chỉ hiện cho user đã đăng nhập và có phim đang xem dở) */}
+            <ContinueWatchingRow />
+
             {visibleRows.length === 0 ? (
                 <div className="px-4 py-16 text-center">
                     <p className="text-gray-400 text-sm">Bạn đã ẩn tất cả các hàng — vào Hồ sơ &gt; Giao diện để hiện lại.</p>
