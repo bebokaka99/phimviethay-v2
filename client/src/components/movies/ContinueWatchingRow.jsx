@@ -135,7 +135,7 @@ const ContinueWatchingRow = () => {
             {/* --- MOBILE: BANNER TIÊU ĐỀ --- */}
             <div className="md:hidden px-4 mb-4">
                 <div 
-                    onClick={() => navigate('/history')}
+                    onClick={() => navigate('/lich-su')}
                     className="relative w-full h-24 rounded-xl overflow-hidden shadow-lg border-l-4 border-red-600 cursor-pointer"
                 >
                     <div className="absolute inset-0 bg-cover bg-center opacity-50" style={{ backgroundImage: `url(${bgImage})` }} />
@@ -160,7 +160,7 @@ const ContinueWatchingRow = () => {
             <div className="flex flex-col md:flex-row items-stretch gap-0 md:gap-8 pl-0 md:pl-12">
                 {/* --- DESKTOP: KHỐI TẠP CHÍ ĐỒNG BỘ 100% VỚI MOVIEROW --- */}
                 <div 
-                    onClick={() => navigate('/history')}
+                    onClick={() => navigate('/lich-su')}
                     className="hidden md:block relative flex-shrink-0 w-[240px] lg:w-[260px] rounded-2xl overflow-hidden cursor-pointer group/cat transition-all duration-500 hover:shadow-2xl hover:shadow-red-900/40 hover:-translate-y-1 bg-[#0a0e17] border border-white/5"
                 >
                     <div 
