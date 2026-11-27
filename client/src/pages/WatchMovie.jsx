@@ -143,6 +143,18 @@ giữa vẫn thấy). */
 #rp-player .bc-dual-subs {
   z-index: 15 !important;
 }
+/* Subtitle formatting: italic, bold, underline tags */
+.bc-dual-subs .bc-dual-cue i,
+.bc-dual-subs .bc-dual-cue em {
+  font-style: italic !important;
+}
+.bc-dual-subs .bc-dual-cue b,
+.bc-dual-subs .bc-dual-cue strong {
+  font-weight: bold !important;
+}
+.bc-dual-subs .bc-dual-cue u {
+  text-decoration: underline !important;
+}
 /* Fix 2+4 (24/11/2026) — panel phụ đề/cài đặt là Bootstrap dropdown mở
 xuống dưới rồi bị #rp-player{overflow:hidden} cắt; .player-dm gốc chỉ có
 overflow:hidden (player.css:541) + .dm-sub có max-height:60vh nhưng KHÔNG

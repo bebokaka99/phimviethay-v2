@@ -1090,11 +1090,28 @@ let secondaryCues = [];
 let primaryCues = [];
 
 function bcCueTextHtml(text) {
-  return String(text || '')
+  let s = String(text || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
+
+  // Strip WebVTT internal voice (<v...>), class (<c...>), and timestamp (<00:00.000>) tags
+  s = s
+    .replace(/&lt;\/?(?:c|v)(?:\.[^&>]*|\s+[^&>]*)?&gt;/gi, '')
+    .replace(/&lt;\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?&gt;/gi, '');
+
+  // Restore safe subtitle formatting tags: <i>, <b>, <u>, <em>, <strong>, <font color="...">
+  s = s
+    .replace(/&lt;(\/?(?:i|b|u|em|strong))(?:\s+[^&>]*)?&gt;/gi, '<$1>')
+    .replace(/&lt;font(\s+color=(?:&quot;[^&quot;]*&quot;|&#39;[^&#39;]*&#39;|[^\s&>]+))?\s*&gt;/gi, (m, p1) => {
+      if (!p1) return '<font>';
+      const cleanColor = p1.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      return '<font' + cleanColor + '>';
+    })
+    .replace(/&lt;\/font\s*&gt;/gi, '</font>');
+
+  return s;
 }
 
 function bcFindActiveCue(cues, currentTime) {
