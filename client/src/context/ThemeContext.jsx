@@ -37,7 +37,8 @@ export const DEFAULT_ACCENT = '#E50914';
 export const DEFAULT_THEME = Object.freeze({
     preset: 'crimson',
     accent: DEFAULT_ACCENT,
-    radius: 'medium',       // square | medium | round
+    radius: 'medium',       // square | medium | round (Card Style)
+    buttonShape: 'pill',    // pill | rounded | tech (Button / Playlist Shape)
     fontSize: 'medium',     // small | medium | large
     density: 'comfortable', // compact | comfortable
     hiddenRows: [],
@@ -82,6 +83,7 @@ export const PRESETS = [
 ];
 
 const RADIUS_PX = { square: '4px', medium: '12px', round: '20px' };
+const BUTTON_RADIUS_PX = { tech: '4px', rounded: '12px', pill: '9999px' };
 const FONT_SIZE_PX = { small: '14px', medium: '16px', large: '18px' };
 const CARD_GAP_PX = { compact: '8px', comfortable: '16px' };
 
@@ -195,6 +197,7 @@ export function resolveTheme(raw) {
         border,
         textOnAccent,
         radiusPx: RADIUS_PX[base.radius] || RADIUS_PX.medium,
+        buttonRadiusPx: BUTTON_RADIUS_PX[base.buttonShape] || BUTTON_RADIUS_PX.pill,
         fontSizePx: FONT_SIZE_PX[base.fontSize] || FONT_SIZE_PX.medium,
         gapPx: CARD_GAP_PX[base.density] || CARD_GAP_PX.comfortable,
     };
@@ -215,6 +218,7 @@ export function applyTheme(resolved) {
     el.style.setProperty('--border', resolved.border);
     el.style.setProperty('--text-on-accent', resolved.textOnAccent);
     el.style.setProperty('--card-radius', resolved.radiusPx);
+    el.style.setProperty('--btn-radius', resolved.buttonRadiusPx);
     el.style.setProperty('--font-size-base', resolved.fontSizePx);
     el.style.setProperty('--card-gap', resolved.gapPx);
     const pb = resolved.progressBar || 'accent';

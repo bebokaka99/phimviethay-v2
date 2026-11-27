@@ -9,6 +9,7 @@ class Playlist {
                 p.user_id, 
                 p.title, 
                 p.description, 
+                p.icon,
                 p.is_public, 
                 p.created_at, 
                 p.updated_at,
@@ -37,16 +38,16 @@ class Playlist {
     }
 
     // Tạo playlist mới
-    static async create(userId, { title, description = '', is_public = 1 }) {
+    static async create(userId, { title, description = '', icon = '🎬', is_public = 1 }) {
         const [result] = await db.execute(
-            'INSERT INTO playlists (user_id, title, description, is_public) VALUES (?, ?, ?, ?)',
-            [userId, title.trim(), description || null, is_public ? 1 : 0]
+            'INSERT INTO playlists (user_id, title, description, icon, is_public) VALUES (?, ?, ?, ?, ?)',
+            [userId, title.trim(), description || null, icon || '🎬', is_public ? 1 : 0]
         );
         return result.insertId;
     }
 
-    // Cập nhật thông tin playlist (tiêu đề, mô tả, quyền riêng tư)
-    static async update(id, userId, { title, description, is_public }) {
+    // Cập nhật thông tin playlist (tiêu đề, mô tả, quyền riêng tư, icon)
+    static async update(id, userId, { title, description, icon, is_public }) {
         const fields = [];
         const values = [];
 
@@ -57,6 +58,10 @@ class Playlist {
         if (description !== undefined) {
             fields.push('description = ?');
             values.push(description || null);
+        }
+        if (icon !== undefined) {
+            fields.push('icon = ?');
+            values.push(icon || '🎬');
         }
         if (is_public !== undefined) {
             fields.push('is_public = ?');
@@ -151,6 +156,7 @@ class Playlist {
                 p.id, 
                 p.title, 
                 p.description, 
+                p.icon,
                 p.created_at,
                 COUNT(pm.id) AS movie_count,
                 (

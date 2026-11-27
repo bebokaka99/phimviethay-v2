@@ -1,5 +1,6 @@
 import React from 'react';
 import { AVATAR_FRAMES } from '../../utils/levelUtils';
+import AvatarFrame from './AvatarFrame';
 
 const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize = "text-sm" }) => {
     // Lấy tên hiển thị (Ưu tiên fullname, nếu không có lấy username)
@@ -8,30 +9,12 @@ const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize 
     const frameObj = AVATAR_FRAMES.find(f => f.id === frameId) || AVATAR_FRAMES[0];
     const ringClass = frameObj?.ringClass || 'border border-white/10';
     
-    // 1. Nếu có link ảnh -> Hiển thị ảnh
-    if (user?.avatar && user.avatar.trim() !== "") {
-        return (
-            <img 
-                src={user.avatar} 
-                alt={name} 
-                className={`${className} rounded-full object-cover bg-gray-800 transition-all ${ringClass}`} 
-                onError={(e) => {
-                    // Nếu link ảnh bị lỗi (404), tự động ẩn ảnh đi để hiện chữ bên dưới (fallback)
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                }}
-            />
-        );
-    }
-
-    // 2. Hàm tạo chữ cái viết tắt (VD: "Nguyen Van A" -> "NA")
     const getInitials = (n) => {
         const parts = n.trim().split(' ');
         if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
         return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     };
 
-    // 3. Hàm chọn màu nền cố định theo tên (Tên giống nhau -> Màu giống nhau)
     const getColor = (n) => {
         const colors = [
             'bg-red-600', 'bg-blue-600', 'bg-green-600', 'bg-yellow-600', 
@@ -43,14 +26,31 @@ const UserAvatar = ({ user, frame: propFrame, className = "w-10 h-10", fontSize 
         return colors[Math.abs(hash) % colors.length];
     };
 
-    // Render Avatar Chữ (Fallback nếu ảnh lỗi hoặc không có ảnh)
     return (
-        <div 
-            className={`${className} rounded-full flex items-center justify-center font-bold text-white shadow-md transition-all ${ringClass} ${getColor(name)}`}
-            // Style này để đảm bảo nó ẩn đi nếu ảnh load thành công (logic onError ở trên)
-            style={user?.avatar ? { display: 'none' } : {}}
-        >
-            <span className={fontSize}>{getInitials(name)}</span>
+        <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
+            {/* 1. Nếu có link ảnh -> Hiển thị ảnh */}
+            {user?.avatar && user.avatar.trim() !== "" ? (
+                <img 
+                    src={user.avatar} 
+                    alt={name} 
+                    className="w-full h-full rounded-full object-cover bg-gray-800 transition-all border border-white/10" 
+                    onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                    }}
+                />
+            ) : null}
+
+            {/* 2. Fallback nếu ảnh lỗi hoặc không có ảnh */}
+            <div 
+                className={`w-full h-full rounded-full flex items-center justify-center font-bold text-white shadow-md transition-all border border-white/10 ${getColor(name)}`}
+                style={user?.avatar ? { display: 'none' } : {}}
+            >
+                <span className={fontSize}>{getInitials(name)}</span>
+            </div>
+
+            {/* 3. Lớp phủ Khung Avatar SVG Vector Nghệ Thuật */}
+            <AvatarFrame frameId={frameId} />
         </div>
     );
 };

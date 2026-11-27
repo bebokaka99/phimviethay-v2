@@ -13,7 +13,7 @@ class Comment {
         let sql = `
             SELECT 
                 c.*, 
-                u.fullname, u.username, u.avatar, u.role,
+                u.fullname, u.username, u.avatar, u.role, u.exp, u.current_frame,
                 (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) as like_count,
                 (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = ?) as is_liked
             FROM comments c 

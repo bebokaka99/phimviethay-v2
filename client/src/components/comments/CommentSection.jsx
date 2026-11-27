@@ -4,6 +4,7 @@ import { FaPaperPlane, FaTrashAlt, FaComments, FaThumbsUp, FaReply, FaChevronDow
 
 import { getComments, addComment, deleteComment, toggleLikeComment } from '../../services/commentService';
 import { getCurrentUser } from '../../services/authService';
+import { calculateLevel } from '../../utils/levelUtils';
 import UserAvatar from '../common/UserAvatar';
 
 // Xử lý hiển thị thời gian, bao gồm fix lệch múi giờ
@@ -140,23 +141,29 @@ const CommentSection = ({ movieSlug, episodeSlug }) => {
     const CommentItem = ({ cmt, isReply = false }) => {
         const replies = !isReply ? getReplies(cmt.id) : [];
         const isRepliesOpen = openReplies[cmt.id];
+        const userLvl = calculateLevel(cmt.exp || 0);
+        const isStaff = cmt.role === 'admin' || cmt.role === 'super_admin';
 
         return (
             <div className={`flex gap-3 group ${isReply ? 'mt-4' : 'mt-6'}`}>
                 {/* Avatar */}
-                <div className={`flex-shrink-0 ${isReply ? 'w-6 h-6' : 'w-10 h-10'} rounded-full overflow-hidden border border-white/10 bg-gray-800`}>
+                <div className={`flex-shrink-0 ${isReply ? 'w-7 h-7' : 'w-10 h-10'} relative`}>
                     <UserAvatar user={cmt} className="w-full h-full" fontSize={isReply ? "text-xs" : "text-sm"} />
                 </div>
 
                 <div className="flex-1">
-                    {/* Header: Tên user + Thời gian */}
-                    <div className="flex items-center gap-2 mb-1">
+                    {/* Header: Tên user + Cấp/Role + Thời gian */}
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`font-bold text-white ${isReply ? 'text-xs' : 'text-sm'} cursor-pointer hover:underline`}>
                             {cmt.fullname || cmt.username}
                         </span>
-                        {cmt.role === 'admin' && (
+                        {isStaff ? (
                             <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider border border-red-500/50 shadow-sm">
-                                ADMIN
+                                {cmt.role === 'super_admin' ? 'SUPER ADMIN' : 'ADMIN'}
+                            </span>
+                        ) : (
+                            <span className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-1 shadow-sm">
+                                ⚡ Cấp {userLvl.level} • {userLvl.title}
                             </span>
                         )}
                         <span className="text-[11px] text-gray-400">{timeAgo(cmt.created_at)}</span>
@@ -189,7 +196,7 @@ const CommentSection = ({ movieSlug, episodeSlug }) => {
                             </button>
                         )}
                         
-                        {(user?.id === cmt.user_id || user?.role === 'admin') && (
+                        {(user?.id === cmt.user_id || user?.role === 'admin' || user?.role === 'super_admin') && (
                             <button 
                                 onClick={() => handleDelete(cmt.id)} 
                                 className="text-xs font-bold text-gray-400 hover:text-red-500 transition ml-auto opacity-0 group-hover:opacity-100"
@@ -202,7 +209,7 @@ const CommentSection = ({ movieSlug, episodeSlug }) => {
                     {/* Form phản hồi */}
                     {replyTo === cmt.id && (
                         <form onSubmit={(e) => handleSubmit(e, cmt.id)} className="mt-3 flex gap-3 animate-fade-in items-start">
-                            <div className="w-6 h-6 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
+                            <div className="w-7 h-7 flex-shrink-0 relative">
                                 <UserAvatar user={user} className="w-full h-full" fontSize="text-xs" />
                             </div>
                             <div className="flex-1 relative">
@@ -251,7 +258,7 @@ const CommentSection = ({ movieSlug, episodeSlug }) => {
 
             {/* Form nhập bình luận chính */}
             <div className="flex gap-4 mb-8">
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gray-800">
+                <div className="w-10 h-10 flex-shrink-0 relative">
                     <UserAvatar user={user} className="w-full h-full" />
                 </div>
                 <form onSubmit={(e) => handleSubmit(e, null)} className="flex-1">

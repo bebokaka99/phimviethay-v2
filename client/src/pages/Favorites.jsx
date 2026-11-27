@@ -18,6 +18,8 @@ import {
     removeMovieFromPlaylist 
 } from '../services/playlistService';
 
+const PLAYLIST_ICONS = ['🎬', '🍿', '🔥', '⭐', '💖', '🌙', '🎌', '💀', '⚔️', '📺', '🚀', '📁'];
+
 // Toast thông báo
 const Toast = ({ type, message, onClose }) => {
     useEffect(() => { const timer = setTimeout(onClose, 3000); return () => clearTimeout(timer); }, [onClose]);
@@ -47,7 +49,7 @@ const Favorites = () => {
     // Modal tạo / sửa playlist
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [modalData, setModalData] = useState({ id: null, title: '', description: '', is_public: true });
+    const [modalData, setModalData] = useState({ id: null, title: '', description: '', is_public: true, icon: '🎬' });
     const [modalSubmitting, setModalSubmitting] = useState(false);
 
     // Toast
@@ -144,7 +146,7 @@ const Favorites = () => {
     // 4. Mở modal tạo mới
     const handleOpenCreateModal = () => {
         setIsEditing(false);
-        setModalData({ id: null, title: '', description: '', is_public: true });
+        setModalData({ id: null, title: '', description: '', is_public: true, icon: '🎬' });
         setShowModal(true);
     };
 
@@ -155,7 +157,8 @@ const Favorites = () => {
             id: pl.id,
             title: pl.title,
             description: pl.description || '',
-            is_public: Boolean(pl.is_public)
+            is_public: Boolean(pl.is_public),
+            icon: pl.icon || '🎬'
         });
         setShowModal(true);
     };
@@ -174,7 +177,8 @@ const Favorites = () => {
                 const res = await updatePlaylist(modalData.id, {
                     title: modalData.title.trim(),
                     description: modalData.description.trim(),
-                    is_public: modalData.is_public ? 1 : 0
+                    is_public: modalData.is_public ? 1 : 0,
+                    icon: modalData.icon || '🎬'
                 });
                 setPlaylists(prev => prev.map(p => p.id === modalData.id ? { ...p, ...res.playlist } : p));
                 setToast({ type: 'success', message: 'Cập nhật danh sách thành công!' });
@@ -182,7 +186,8 @@ const Favorites = () => {
                 const res = await createPlaylist({
                     title: modalData.title.trim(),
                     description: modalData.description.trim(),
-                    is_public: modalData.is_public ? 1 : 0
+                    is_public: modalData.is_public ? 1 : 0,
+                    icon: modalData.icon || '🎬'
                 });
                 setPlaylists(prev => [res.playlist, ...prev]);
                 setActiveTab(res.playlist.id);
@@ -265,7 +270,7 @@ const Favorites = () => {
                                 onClick={() => setActiveTab(pl.id)}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs whitespace-nowrap transition border shrink-0 ${isActive ? 'bg-white text-black border-white shadow-lg' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'}`}
                             >
-                                <FaFolder className={isActive ? 'text-black' : 'text-gray-400'} />
+                                <span className="text-sm shrink-0">{pl.icon || '🎬'}</span>
                                 <span>{pl.title}</span>
                                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-black/20 text-black' : 'bg-white/10 text-gray-400'}`}>
                                     {pl.movie_count || 0}
@@ -284,6 +289,7 @@ const Favorites = () => {
                 <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
                     <div>
                         <div className="flex items-center gap-2.5">
+                            {activeTab !== 'favorites' && <span className="text-xl">{currentPlaylist?.icon || '🎬'}</span>}
                             <h2 className="text-lg font-black text-white">
                                 {activeTab === 'favorites' ? 'Danh Sách Phim Yêu Thích' : currentPlaylist?.title}
                             </h2>
@@ -384,6 +390,22 @@ const Favorites = () => {
                                     autoFocus
                                     className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-[var(--accent)] outline-none transition"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Biểu tượng danh sách</label>
+                                <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 p-2 bg-white/5 rounded-xl border border-white/10">
+                                    {PLAYLIST_ICONS.map(ic => (
+                                        <button
+                                            key={ic}
+                                            type="button"
+                                            onClick={() => setModalData({ ...modalData, icon: ic })}
+                                            className={`h-9 rounded-lg flex items-center justify-center text-lg transition ${modalData.icon === ic ? 'bg-[var(--accent)] scale-110 shadow-lg text-white' : 'hover:bg-white/10'}`}
+                                        >
+                                            {ic}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div>

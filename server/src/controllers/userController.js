@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Favorite = require('../models/Favorite');
 const History = require('../models/History'); 
 const bcrypt = require('bcryptjs');
+const db = require('../config/database');
 const { validateTheme } = require('../utils/themeValidation');
 
 // --- FAVORITES ---
@@ -39,7 +40,7 @@ exports.checkFavorite = async (req, res) => {
 // --- PROFILE ---
 exports.updateProfile = async (req, res) => {
     try {
-        const { fullname, password, avatar, banner_url, is_public, current_frame, exp } = req.body;
+        const { fullname, password, currentPassword, avatar, banner_url, is_public, current_frame, exp } = req.body;
         const updateData = {};
         
         if (fullname !== undefined) updateData.fullname = fullname;
@@ -50,6 +51,20 @@ exports.updateProfile = async (req, res) => {
         if (exp !== undefined) updateData.exp = Number(exp) || 0;
         
         if (password) {
+            const [userRows] = await db.execute('SELECT password FROM users WHERE id = ?', [req.user.id]);
+            const existingHash = userRows[0]?.password;
+            if (existingHash) {
+                if (!currentPassword) {
+                    return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại để đổi mật khẩu mới.' });
+                }
+                const isMatch = await bcrypt.compare(currentPassword, existingHash);
+                if (!isMatch) {
+                    return res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác!' });
+                }
+            }
+            if (password.length < 6) {
+                return res.status(400).json({ message: 'Mật khẩu mới phải có tối thiểu 6 ký tự.' });
+            }
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
         }
@@ -61,7 +76,7 @@ exports.updateProfile = async (req, res) => {
         res.json({ message: 'Cập nhật thành công!', user: updatedUser });
     } catch (error) { 
         console.error('UpdateProfile Error:', error);
-        res.status(500).json({ message: 'Lỗi cập nhật hồ sơ' }); 
+        res.status(500).json({ message: error.message || 'Lỗi cập nhật hồ sơ' }); 
     }
 };
 

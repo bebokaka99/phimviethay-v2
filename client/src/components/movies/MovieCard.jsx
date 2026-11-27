@@ -168,7 +168,7 @@ const MovieCard = memo(({ movie }) => {
                         {displayRating && (<span className="flex items-center gap-1 text-yellow-400 text-xs font-extrabold shadow-black drop-shadow-md"><FaStar /> {displayRating}</span>)}
                         {year && (<span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{year}</span>)}
                         {time && (<span className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">{time.replace('phút', 'p')}</span>)}
-                        <span className="bg-red-600 text-white px-1.5 py-0.5 rounded uppercase shadow-sm">{movie.quality || 'HD'}</span>
+                        <span style={{ backgroundColor: 'var(--accent, #dc2626)' }} className="text-white px-1.5 py-0.5 rounded uppercase shadow-sm">{movie.quality || 'HD'}</span>
                     </div>
                     {loadingDetail ? (
                         <div className="w-full space-y-1.5 py-1" aria-hidden="true">
@@ -188,7 +188,7 @@ const MovieCard = memo(({ movie }) => {
                         </>
                     )}
                     <div className="flex items-center gap-2 w-full mt-2">
-                        <Link to={`/xem-phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} className="flex-1 bg-red-600 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-700 transition shadow-lg shadow-red-900/30"><FaPlay size={10} /> Xem</Link>
+                        <Link to={`/xem-phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--accent, #dc2626)' }} className="flex-1 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:opacity-90 transition shadow-lg shadow-black/40"><FaPlay size={10} /> Xem</Link>
                         <Link to={`/phim/${movie.slug}`} onClick={(e) => e.stopPropagation()} className="flex-1 bg-white/10 text-white py-2 rounded-md font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/20 transition border border-white/20 backdrop-blur-sm"><FaInfoCircle size={12} /> Chi Tiết</Link>
                     </div>
                 </div>
@@ -211,10 +211,26 @@ const MovieCard = memo(({ movie }) => {
 
                     <OptimizedImage src={posterUrl} width={320} alt={movie.name} className="w-full h-full object-cover transform transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.07] group-hover:opacity-80" />
                     
-                    {/* Badge/Info (Giữ nguyên) */}
-                    <div className="absolute top-2 left-2"><span className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase">{movie.quality || 'HD'}</span></div>
+                    {/* Badge/Info */}
+                    <div className="absolute top-2 left-2">
+                        <span 
+                            style={{ backgroundColor: 'var(--accent, #dc2626)' }}
+                            className="text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-md uppercase"
+                        >
+                            {movie.quality || 'HD'}
+                        </span>
+                    </div>
                     {displayRating && (<div className="absolute top-2 right-2"><span className="bg-yellow-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md flex items-center gap-1">{displayRating} <FaStar size={8} /></span></div>)}
-                    {movie.episode_current && (<div className="absolute bottom-2 right-2 z-10"><span className="bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/10">{movie.episode_current}</span></div>)}
+                    {(movie.episode_current || movie.episode_name) && (
+                        <div className="absolute bottom-2 right-2 z-10">
+                            <span 
+                                style={{ backgroundColor: 'var(--accent, #dc2626)' }}
+                                className="text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md backdrop-blur-sm border border-white/20"
+                            >
+                                {movie.episode_current || movie.episode_name}
+                            </span>
+                        </div>
+                    )}
                     
                     {/* Play Icon (Nổi bật hơn) */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-500 ease-out scale-75 group-hover:scale-100">

@@ -12,6 +12,8 @@ import {
     checkMovieInPlaylists 
 } from '../../services/playlistService';
 
+const PLAYLIST_ICONS = ['🎬', '🍿', '🔥', '⭐', '💖', '🌙', '🎌', '💀', '⚔️', '📺', '🚀', '📁'];
+
 const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
     const [playlists, setPlaylists] = useState([]);
     const [inFavorites, setInFavorites] = useState(false);
@@ -22,6 +24,7 @@ const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
     // Form tạo playlist mới
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [newTitle, setNewTitle] = useState('');
+    const [newIcon, setNewIcon] = useState('🎬');
     const [isPublic, setIsPublic] = useState(true);
     const [creating, setCreating] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -106,6 +109,7 @@ const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
         try {
             const res = await createPlaylist({
                 title: newTitle.trim(),
+                icon: newIcon,
                 is_public: isPublic ? 1 : 0
             });
 
@@ -116,6 +120,7 @@ const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
             setPlaylists(prev => [{ ...newPl, movie_count: 1 }, ...prev]);
             setCheckedPlaylists(prev => [...prev, newPl.id]);
             setNewTitle('');
+            setNewIcon('🎬');
             setShowCreateForm(false);
         } catch (err) {
             setErrorMsg(typeof err === 'string' ? err : 'Lỗi tạo danh sách');
@@ -190,8 +195,8 @@ const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
                                         className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition select-none ${isChecked ? 'bg-white/10 border-white/40 text-white' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
                                     >
                                         <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-                                            <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs shrink-0 text-gray-300">
-                                                📁
+                                            <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-sm shrink-0">
+                                                {pl.icon || '🎬'}
                                             </span>
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-1.5">
@@ -241,6 +246,22 @@ const SaveToPlaylistModal = ({ movie, isOpen, onClose, onStatusChange }) => {
                                 autoFocus
                                 className="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:border-red-500 outline-none"
                             />
+
+                            <div>
+                                <label className="block text-[10px] text-gray-400 font-bold mb-1.5">Chọn biểu tượng:</label>
+                                <div className="grid grid-cols-6 gap-1 bg-black/40 p-2 rounded-xl border border-white/10">
+                                    {PLAYLIST_ICONS.map(ic => (
+                                        <button
+                                            key={ic}
+                                            type="button"
+                                            onClick={() => setNewIcon(ic)}
+                                            className={`h-7 rounded-lg flex items-center justify-center text-sm transition ${newIcon === ic ? 'bg-red-600/80 scale-110 shadow' : 'hover:bg-white/10'}`}
+                                        >
+                                            {ic}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             
                             <div className="flex items-center justify-between text-xs text-gray-400 px-1">
                                 <span>Quyền riêng tư:</span>

@@ -4,6 +4,7 @@ import { FaSearch, FaChevronDown, FaTimes, FaSpinner, FaBars, FaList, FaHistory,
 import { getMenuData, searchMovies } from '../../services/movieService';
 import { useDebounce } from '../../hooks/useDebounce';
 import { getRoleLabel } from '../../utils/roleLabel';
+import { calculateLevel } from '../../utils/levelUtils';
 import { getCurrentUser, logout, getMe } from '../../services/authService';
 import { LIST_ITEMS, POPULAR_GENRES, POPULAR_COUNTRIES, POPULAR_SEARCHES, HIDDEN_GENRE_SLUGS, HIDDEN_COUNTRY_SLUGS } from '../../config/menuRows';
 import Logo from '../common/Logo';
@@ -436,7 +437,16 @@ const Header = () => {
                                         <div className="p-3.5 flex gap-2.5 items-center border-b border-white/10">
                                             <UserAvatar user={user} className="w-9 h-9 border border-white/10 shrink-0" />
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-bold text-white truncate flex items-center gap-1.5 flex-wrap">{user.fullname || user.username}<span className="bg-red-600/80 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0">{getRoleLabel(user.role)}</span></p>
+                                                <p className="text-sm font-bold text-white truncate flex items-center gap-1.5 flex-wrap">
+                                                    {user.fullname || user.username}
+                                                    {(user.role === 'admin' || user.role === 'super_admin') ? (
+                                                        <span className="bg-red-600/80 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0">{getRoleLabel(user.role)}</span>
+                                                    ) : (
+                                                        <span className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0">
+                                                            ⚡ Cấp {calculateLevel(user.exp || 0).level} • {calculateLevel(user.exp || 0).title}
+                                                        </span>
+                                                    )}
+                                                </p>
                                                 <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
                                             </div>
                                         </div>
@@ -459,7 +469,19 @@ const Header = () => {
             <div className={`fixed top-0 left-0 w-[85%] max-w-[320px] h-full bg-[#0a0e17] z-[200] transform transition-transform duration-300 ease-out lg:hidden flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl border-r border-white/5`}>
                 <div className="p-6 border-b border-white/10 bg-gradient-to-r from-red-900/20 to-transparent">
                     <div className="flex justify-between items-center mb-6"><Logo /><button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition" aria-label="Đóng menu"><FaTimes size={16}/></button></div>
-                    {user ? (<div className="flex items-center gap-3"><UserAvatar user={user} className="w-10 h-10 border border-white/20" /><div><p className="text-white font-bold text-sm truncate w-32">{user.fullname || user.username}</p><p className="text-[10px] text-gray-500 font-bold">{getRoleLabel(user.role)}</p></div></div>) : (<div className="grid grid-cols-2 gap-3"><Link to="/login" className="bg-red-600 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng nhập</Link><Link to="/register" className="border border-white/20 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng ký</Link></div>)}
+                    {user ? (
+                        <div className="flex items-center gap-3">
+                            <UserAvatar user={user} className="w-10 h-10 border border-white/20" />
+                            <div>
+                                <p className="text-white font-bold text-sm truncate w-32">{user.fullname || user.username}</p>
+                                {(user.role === 'admin' || user.role === 'super_admin') ? (
+                                    <p className="text-[10px] text-gray-500 font-bold">{getRoleLabel(user.role)}</p>
+                                ) : (
+                                    <p className="text-[10px] text-amber-400 font-bold">⚡ Cấp {calculateLevel(user.exp || 0).level} • {calculateLevel(user.exp || 0).title}</p>
+                                )}
+                            </div>
+                        </div>
+                    ) : (<div className="grid grid-cols-2 gap-3"><Link to="/login" className="bg-red-600 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng nhập</Link><Link to="/register" className="border border-white/20 text-white font-bold py-2 rounded-lg text-xs text-center">Đăng ký</Link></div>)}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
                     <form onSubmit={handleDrawerSearch} className="mb-3">

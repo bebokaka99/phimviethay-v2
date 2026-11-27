@@ -65,9 +65,14 @@ const FALLBACK_PRESETS = [
 ];
 
 const RADIUS_OPTIONS = [
-    { id: 'round', label: 'Tròn nhiều' },
-    { id: 'medium', label: 'Vừa' },
-    { id: 'square', label: 'Vuông' },
+    { id: 'round', label: 'Bo cong tròn (Round)' },
+    { id: 'medium', label: 'Bo vừa (Medium)' },
+    { id: 'square', label: 'Vuông góc (Square)' },
+];
+const BUTTON_SHAPE_OPTIONS = [
+    { id: 'pill', label: 'Bo tròn (Pill)' },
+    { id: 'rounded', label: 'Bo vừa (Rounded)' },
+    { id: 'tech', label: 'Vuông góc (Tech)' },
 ];
 const FONT_SIZE_OPTIONS = [
     { id: 'small', label: 'Nhỏ' },
@@ -132,7 +137,8 @@ const ToggleRow = ({ label, desc, checked, onChange, accent }) => (
 
 // Hộp xem trước giao diện trực quan (Live Preview Box)
 const ThemePreviewBox = ({ theme, accent }) => {
-    const radiusClass = theme?.radius === 'round' ? 'rounded-2xl' : theme?.radius === 'square' ? 'rounded-none' : 'rounded-xl';
+    const cardRadiusClass = theme?.radius === 'round' ? 'rounded-2xl' : theme?.radius === 'square' ? 'rounded-none' : 'rounded-xl';
+    const btnRadiusClass = theme?.buttonShape === 'rounded' ? 'rounded-xl' : theme?.buttonShape === 'tech' ? 'rounded-sm' : 'rounded-full';
     const pb = theme?.progressBar || 'accent';
     const pbColorStyle = pb === 'crimson' ? { backgroundColor: '#e50914' }
         : pb === 'cyberpunk' ? { background: 'linear-gradient(90deg, #ec4899, #8b5cf6)' }
@@ -141,26 +147,36 @@ const ThemePreviewBox = ({ theme, accent }) => {
         : { backgroundColor: accent };
 
     return (
-        <div className={`p-4 md:p-6 bg-[#0e1422]/90 border border-white/15 ${radiusClass} shadow-2xl relative overflow-hidden backdrop-blur-2xl transition-all`}>
+        <div className={`p-4 md:p-6 bg-[#0e1422]/90 border border-white/15 ${cardRadiusClass} shadow-2xl relative overflow-hidden backdrop-blur-2xl transition-all`}>
             {/* Header mô phỏng */}
             <div className="flex items-center justify-between pb-3.5 border-b border-white/10 mb-5">
                 <div className="flex items-center gap-2.5">
                     <span className="w-3 h-3 rounded-full animate-ping" style={{ backgroundColor: accent }}></span>
                     <span className="text-xs font-black tracking-wider uppercase text-white drop-shadow">Hộp Xem Trước Trực Quan</span>
                 </div>
-                <span className="text-[10px] px-2.5 py-1 rounded-full font-mono font-bold tracking-wider border" style={{ backgroundColor: `${accent}22`, borderColor: `${accent}55`, color: accent }}>
-                    Thời gian thực
-                </span>
+                <div className="flex items-center gap-2">
+                    <button type="button" className={`px-2.5 py-1 ${btnRadiusClass} text-[10px] font-bold border transition flex items-center gap-1.5`} style={{ backgroundColor: `${accent}22`, borderColor: `${accent}55`, color: accent }}>
+                        🎬 Playlist Mẫu
+                    </button>
+                    <span className="text-[10px] px-2.5 py-1 rounded-full font-mono font-bold tracking-wider border bg-white/5 border-white/10 text-gray-300">
+                        Thời gian thực
+                    </span>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
                 {/* Mini Card Phim */}
-                <div className="sm:col-span-5 relative group overflow-hidden rounded-xl border border-white/15 aspect-[2/3] max-h-56 mx-auto sm:mx-0 shadow-2xl bg-black">
+                <div className={`sm:col-span-5 relative group overflow-hidden ${cardRadiusClass} border border-white/15 aspect-[2/3] max-h-56 mx-auto sm:mx-0 shadow-2xl bg-black`}>
                     <img 
                         src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=600&auto=format&fit=crop" 
                         alt="Preview Card" 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                     />
+                    <div className="absolute top-2 left-2 flex gap-1">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded text-white shadow uppercase" style={{ backgroundColor: accent }}>
+                            HD
+                        </span>
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-end p-3.5">
                         <span className="text-[10px] font-black px-2 py-0.5 rounded text-white self-start mb-1.5 shadow" style={{ backgroundColor: accent }}>
                             TẬP 12
@@ -197,18 +213,18 @@ const ThemePreviewBox = ({ theme, accent }) => {
                         </div>
                     </div>
 
-                    {/* Nút bấm mẫu */}
+                    {/* Nút bấm mẫu theo buttonShape */}
                     <div className="flex gap-2">
                         <button 
                             type="button"
-                            className={`flex-1 py-2.5 px-4 ${radiusClass} font-bold text-xs text-white shadow-lg transition flex items-center justify-center gap-2 active:scale-95`}
+                            className={`flex-1 py-2.5 px-4 ${btnRadiusClass} font-bold text-xs text-white shadow-lg transition flex items-center justify-center gap-2 active:scale-95`}
                             style={{ backgroundColor: accent }}
                         >
                             <FaPlay className="text-[10px]" /> Xem tiếp
                         </button>
                         <button 
                             type="button"
-                            className={`py-2.5 px-4 ${radiusClass} font-bold text-xs bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition flex items-center gap-1.5 active:scale-95`}
+                            className={`py-2.5 px-4 ${btnRadiusClass} font-bold text-xs bg-white/10 hover:bg-white/20 text-gray-200 border border-white/10 transition flex items-center gap-1.5 active:scale-95`}
                         >
                             <FaHeart className="text-xs text-red-500" /> Tủ phim
                         </button>
@@ -216,8 +232,9 @@ const ThemePreviewBox = ({ theme, accent }) => {
 
                     {/* Thông số màu sắc tóm tắt */}
                     <div className="flex items-center justify-between text-[11px] text-gray-400 pt-1 border-t border-white/5">
-                        <span>Tiến trình: <strong className="text-white capitalize">{theme?.progressBar || 'accent'}</strong></span>
-                        <span>Bo góc: <strong className="text-white capitalize">{theme?.radius || 'medium'}</strong></span>
+                        <span>Card: <strong className="text-white capitalize">{theme?.radius || 'medium'}</strong></span>
+                        <span>Nút: <strong className="text-white capitalize">{theme?.buttonShape || 'pill'}</strong></span>
+                        <span>Màu: <strong className="text-white uppercase">{accent}</strong></span>
                     </div>
                 </div>
             </div>
@@ -345,7 +362,10 @@ const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset }) => {
             </div>
 
             {/* (d) Bo góc card */}
-            <OptionGroup label="Bo góc card & nút bấm" options={RADIUS_OPTIONS} value={theme?.radius || 'medium'} onChange={(v) => setTheme({ radius: v })} accent={accent} />
+            <OptionGroup label="Kiểu dáng Card Phim" options={RADIUS_OPTIONS} value={theme?.radius || 'medium'} onChange={(v) => setTheme({ radius: v })} accent={accent} />
+
+            {/* (d2) Kiểu dáng Nút bấm & Playlist */}
+            <OptionGroup label="Kiểu dáng Nút bấm & Playlist" options={BUTTON_SHAPE_OPTIONS} value={theme?.buttonShape || 'pill'} onChange={(v) => setTheme({ buttonShape: v })} accent={accent} />
 
             {/* (e) Cỡ chữ */}
             <OptionGroup label="Cỡ chữ toàn hệ thống" options={FONT_SIZE_OPTIONS} value={theme?.fontSize || 'medium'} onChange={(v) => setTheme({ fontSize: v })} accent={accent} />
@@ -412,6 +432,7 @@ const Profile = () => {
         banner_url: '',
         is_public: true,
         current_frame: 'default',
+        currentPassword: '',
         newPassword: '', 
         confirmPassword: '' 
     });
@@ -546,9 +567,15 @@ const Profile = () => {
 
     const handleUpdate = async (e) => {
         if (e) e.preventDefault();
-        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) { 
-            setToast({ type: 'error', message: 'Mật khẩu nhập lại không khớp!' }); 
-            return; 
+        if (formData.newPassword) {
+            if (!formData.currentPassword) {
+                setToast({ type: 'error', message: 'Vui lòng nhập mật khẩu hiện tại!' });
+                return;
+            }
+            if (formData.newPassword !== formData.confirmPassword) { 
+                setToast({ type: 'error', message: 'Mật khẩu nhập lại không khớp!' }); 
+                return; 
+            }
         }
         setIsSaving(true);
         try {
@@ -564,7 +591,10 @@ const Profile = () => {
                 banner_url: finalBannerUrl,
                 is_public: formData.is_public ? 1 : 0,
                 current_frame: formData.current_frame,
-                ...(formData.newPassword && { password: formData.newPassword }) 
+                ...(formData.newPassword && { 
+                    currentPassword: formData.currentPassword,
+                    password: formData.newPassword 
+                }) 
             };
             const res = await updateProfile(dataToSend);
             setUser(res.user); 
@@ -586,6 +616,23 @@ const Profile = () => {
         } catch (e) {
             setToast({ type: 'error', message: 'Lỗi cập nhật khung avatar' });
         }
+    };
+
+    const openEditTab = (tabName = 'info') => {
+        setFormData({
+            fullname: user.fullname || '',
+            avatar: user.avatar || '',
+            banner_url: user.banner_url || '',
+            is_public: user.is_public !== 0,
+            current_frame: user.current_frame || 'default',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+        });
+        setSelectedFile(null);
+        setSelectedBannerFile(null);
+        setActiveTab(tabName);
+        setShowEdit(true);
     };
 
     if (!user) return null;
@@ -613,7 +660,7 @@ const Profile = () => {
                 
                 {/* Nút đổi ảnh bìa nhanh góc trên-phải */}
                 <button
-                    onClick={() => { setActiveTab('banner'); setShowEdit(true); }}
+                    onClick={() => openEditTab('banner')}
                     className="absolute top-24 md:top-28 right-4 md:right-12 z-20 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white font-bold text-xs py-2 px-3.5 rounded-full border border-white/20 transition flex items-center gap-2 shadow-lg"
                     title="Đổi ảnh bìa"
                 >
@@ -632,7 +679,7 @@ const Profile = () => {
                             />
                         </div>
                         <button 
-                            onClick={() => { setActiveTab('avatar'); setShowEdit(true); }} 
+                            onClick={() => openEditTab('avatar')} 
                             className="absolute bottom-1 right-1 bg-[#222] text-white p-2.5 rounded-full shadow-lg border border-white/20 hover:bg-white hover:text-black transition transform hover:scale-110"
                             title="Đổi ảnh đại diện & khung"
                         >
@@ -685,7 +732,7 @@ const Profile = () => {
 
                     <div className="flex gap-3 mb-2">
                         <button 
-                            onClick={() => { setActiveTab('info'); setShowEdit(true); }} 
+                            onClick={() => openEditTab('info')} 
                             className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white font-bold py-2.5 px-6 rounded-full shadow-lg transition flex items-center gap-2"
                         >
                             <FaPen className="text-xs" /> Chỉnh sửa hồ sơ
@@ -740,7 +787,7 @@ const Profile = () => {
                                 onClick={() => setActivePlaylistTab(pl.id)}
                                 className={`flex items-center gap-2 px-3.5 py-2 rounded-full font-bold text-xs whitespace-nowrap transition border shrink-0 ${isActive ? 'bg-white text-black border-white shadow' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
                             >
-                                <span>📁 {pl.title}</span>
+                                <span>{pl.icon || '🎬'} {pl.title}</span>
                                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-black/20 text-black' : 'bg-white/10 text-gray-400'}`}>
                                     {pl.movie_count || 0}
                                 </span>
@@ -805,7 +852,7 @@ const Profile = () => {
 
             {/* Modal Cài đặt tài khoản & Hồ sơ */}
             {showEdit && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
+                <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
                     <div className="bg-[#0a0f1d] w-full max-w-4xl h-[700px] rounded-2xl border border-white/15 shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
                         <button 
                             onClick={() => setShowEdit(false)} 
@@ -1040,20 +1087,36 @@ const Profile = () => {
                                                 <p className="text-xs text-gray-400">Đổi mật khẩu định kỳ để bảo vệ tài khoản của bạn</p>
                                             </div>
                                             <div className="space-y-4">
-                                                <input 
-                                                    type="password" 
-                                                    placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" 
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:border-red-600 outline-none transition" 
-                                                    value={formData.newPassword} 
-                                                    onChange={(e) => setFormData({...formData, newPassword: e.target.value})} 
-                                                />
-                                                <input 
-                                                    type="password" 
-                                                    placeholder="Nhập lại mật khẩu mới" 
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:border-red-600 outline-none transition" 
-                                                    value={formData.confirmPassword} 
-                                                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-                                                />
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mật khẩu hiện tại</label>
+                                                    <input 
+                                                        type="password" 
+                                                        placeholder="Nhập mật khẩu hiện tại..." 
+                                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:border-red-600 outline-none transition" 
+                                                        value={formData.currentPassword} 
+                                                        onChange={(e) => setFormData({...formData, currentPassword: e.target.value})} 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mật khẩu mới</label>
+                                                    <input 
+                                                        type="password" 
+                                                        placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" 
+                                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:border-red-600 outline-none transition" 
+                                                        value={formData.newPassword} 
+                                                        onChange={(e) => setFormData({...formData, newPassword: e.target.value})} 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Xác nhận mật khẩu mới</label>
+                                                    <input 
+                                                        type="password" 
+                                                        placeholder="Nhập lại mật khẩu mới" 
+                                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:border-red-600 outline-none transition" 
+                                                        value={formData.confirmPassword} 
+                                                        onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     )}

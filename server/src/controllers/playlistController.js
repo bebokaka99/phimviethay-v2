@@ -15,7 +15,7 @@ exports.getPlaylists = async (req, res) => {
 // 2. Tạo playlist mới
 exports.createPlaylist = async (req, res) => {
     try {
-        const { title, description, is_public } = req.body;
+        const { title, description, icon, is_public } = req.body;
         if (!title || !title.trim()) {
             return res.status(400).json({ message: 'Tên danh sách không được để trống' });
         }
@@ -23,6 +23,7 @@ exports.createPlaylist = async (req, res) => {
         const newId = await Playlist.create(req.user.id, {
             title: title.trim(),
             description: description || '',
+            icon: icon || '🎬',
             is_public: is_public !== undefined ? is_public : 1
         });
 
@@ -45,7 +46,7 @@ exports.createPlaylist = async (req, res) => {
 exports.updatePlaylist = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, is_public } = req.body;
+        const { title, description, icon, is_public } = req.body;
 
         const existing = await Playlist.getById(id);
         if (!existing) {
@@ -55,7 +56,7 @@ exports.updatePlaylist = async (req, res) => {
             return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa danh sách này' });
         }
 
-        await Playlist.update(id, req.user.id, { title, description, is_public });
+        await Playlist.update(id, req.user.id, { title, description, icon, is_public });
         const updated = await Playlist.getById(id);
         res.json({ message: 'Cập nhật danh sách thành công!', playlist: updated });
     } catch (error) {
