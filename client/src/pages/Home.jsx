@@ -21,8 +21,7 @@ const Home = () => {
   // qua useTheme() (hợp đồng nhóm B); id hàng = slug trong HOME_ROWS,
   // khớp đúng với toggle ở Profile.jsx (nhóm C). Khi chưa có Provider
   // thì fallback [] (hiện đủ 7 hàng) thay vì crash.
-  let themeApi = null;
-  try { themeApi = useTheme(); } catch (e) { themeApi = null; }
+  const themeApi = useTheme();
   const hiddenRows = themeApi?.theme?.hiddenRows || [];
   const customRows = themeApi?.theme?.customRows;
   const visibleRows = Array.isArray(customRows) && customRows.length > 0

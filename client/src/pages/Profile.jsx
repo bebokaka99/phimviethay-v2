@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -256,7 +256,7 @@ const AccordionSection = ({ icon: Icon, title, desc, isOpen, onToggle, accent, b
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 border transition-transform"
                     style={{ backgroundColor: `${accent}15`, borderColor: `${accent}40`, color: accent }}
                 >
-                    <Icon />
+                    {Icon && <Icon />}
                 </span>
                 <div className="min-w-0">
                     <h4 className="font-bold text-sm text-white truncate flex items-center gap-2">
@@ -317,12 +317,6 @@ const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset, onSave }
         }).catch(() => {});
     }, []);
 
-    // Đồng bộ khi theme gốc đổi bên ngoài
-    useEffect(() => {
-        setDraftTheme({ ...theme });
-        setCustomAccent(theme?.accent || '#dc2626');
-    }, [theme]);
-
     const updateDraft = (updates) => {
         setDraftTheme(prev => ({ ...prev, ...updates }));
     };
@@ -363,7 +357,7 @@ const ThemeSettings = ({ theme, setTheme, resetTheme, presets, onReset, onSave }
             type: r.type,
             enabled: !hidden.includes(r.slug)
         }));
-    }, [draftTheme?.customRows, draftTheme?.hiddenRows]);
+    }, [draftTheme]);
 
     const handleMoveRow = (index, dir) => {
         const targetIdx = index + dir;
@@ -823,8 +817,7 @@ const Profile = () => {
     const fileInputRef = useRef(null);
     const bannerInputRef = useRef(null);
 
-    let themeApi = null;
-    try { themeApi = useTheme(); } catch (e) { themeApi = null; }
+    const themeApi = useTheme();
     const theme = themeApi?.theme;
     const setTheme = themeApi?.setTheme || (() => {});
     const resetTheme = themeApi?.resetTheme || (() => {});
@@ -897,7 +890,7 @@ const Profile = () => {
             try {
                 await toggleFavorite({ slug: movie.slug });
                 setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi tủ phim.` });
-            } catch (e) {
+            } catch {
                 setFavorites(prev);
                 setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
             }
@@ -910,7 +903,7 @@ const Profile = () => {
                     p.id === activePlaylistTab ? { ...p, movie_count: Math.max(0, (p.movie_count || 1) - 1) } : p
                 ));
                 setToast({ type: 'success', message: `Đã gỡ "${movie.name}" khỏi danh sách.` });
-            } catch (e) {
+            } catch {
                 setPlaylistMovies(prev);
                 setToast({ type: 'error', message: 'Không gỡ được phim, vui lòng thử lại.' });
             }
@@ -943,7 +936,7 @@ const Profile = () => {
         try {
             const res = await axios.post(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, data);
             return res.data.secure_url;
-        } catch (err) { throw new Error("Lỗi khi tải ảnh lên máy chủ."); }
+        } catch { throw new Error("Lỗi khi tải ảnh lên máy chủ."); }
     };
 
     const handleUpdate = async (e) => {
@@ -994,7 +987,7 @@ const Profile = () => {
             const res = await updateProfile({ current_frame: frameId });
             setUser(res.user);
             setToast({ type: 'success', message: `Đã đổi sang khung "${AVATAR_FRAMES.find(f => f.id === frameId)?.name}"` });
-        } catch (e) {
+        } catch {
             setToast({ type: 'error', message: 'Lỗi cập nhật khung avatar' });
         }
     };
