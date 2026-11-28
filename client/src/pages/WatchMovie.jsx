@@ -942,6 +942,16 @@ const WatchMovie = () => {
     // Mở tập / đổi tập: lấy m3u8 + sub rồi setup (tập đầu) hoặc load() (đổi tập).
     useEffect(() => {
         if (!currentEpisode?.link_embed) return undefined;
+        // Nếu là tập từ Nguồn C -> không nạp JWPlayer và không extract m3u8 (dùng iframe sandbox an toàn riêng)
+        if (currentEpisode.is_nguonc || currentEpisode.link_embed.includes('streamc') || currentEpisode.link_embed.includes('nguonc')) {
+            setPlayerError(null);
+            try {
+                const p = window.jwplayer && window.jwplayer('player');
+                if (p && typeof p.pause === 'function') p.pause();
+            } catch (e) { }
+            return undefined;
+        }
+
         const runId = ++runIdRef.current;
         let cancelled = false;
         setPlayerError(null);
@@ -963,7 +973,8 @@ const WatchMovie = () => {
                     document.head.appendChild(l);
                 } catch (e) { }
                 const tracks = [{ file: '', kind: 'thumbnails' }, ...mapSubtitleTracks(subs)];
-                if (!originExecutedRef.current) {
+                const needsSetup = !originExecutedRef.current || !document.querySelector('.jwplayer');
+                if (needsSetup) {
                     if (!document.getElementById('rp-player') || !document.getElementById('player')) return;
                     bootCleanupRef.current = startBootController();
                     startBrandPoller();
@@ -1143,7 +1154,17 @@ const WatchMovie = () => {
                     <div className={`w-full ${isTheater || isLightOff ? 'lg:w-[100%]' : 'lg:w-[75%]'} transition-all duration-500`}>
                         <div className="relative w-full aspect-video bg-black md:rounded-xl overflow-hidden shadow-[0_0_50px_rgba(220,38,38,0.15)] ring-1 ring-white/10 md:ring-red-500/20 group z-20">
                             {currentEpisode ? (
-                                currentEpisode.link_embed ? (
+                                (currentEpisode.is_nguonc || currentEpisode.link_embed?.includes('streamc') || currentEpisode.link_embed?.includes('nguonc')) ? (
+                                    <iframe
+                                        key={currentEpisode.link_embed}
+                                        src={currentEpisode.link_embed}
+                                        title={`${movie?.name || 'Phim'} — Tập ${currentEpisode.name}`}
+                                        className="w-full h-full border-0 aspect-video"
+                                        allowFullScreen
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        sandbox="allow-scripts allow-same-origin allow-fullscreen allow-autoplay"
+                                    />
+                                ) : currentEpisode.link_embed ? (
                                     <>
                                         {/* DOM đúng template-embed.html (origin.js cần):
                                             #rp-player[data-hash] > .main-player > #player,
@@ -1276,7 +1297,12 @@ const WatchMovie = () => {
                         </div>
 
                         {!isLightOff && currentEpisode?.link_embed && (
-                            <p className="mt-2 px-1 text-[11px] text-gray-500">Đang phát bằng trình phát riêng — bấm “Tiếp theo” để chuyển tập. Nút “Bỏ qua giới thiệu”, chọn phụ đề và tốc độ nằm trong trình phát.</p>
+                            <p className="mt-2 px-1 text-[11px] text-gray-500">
+                                {(currentEpisode.is_nguonc || currentEpisode.link_embed?.includes('streamc') || currentEpisode.link_embed?.includes('nguonc'))
+                                    ? 'Đang phát qua máy chủ dự phòng Nguồn C (Sandbox an toàn đã chặn 100% quảng cáo nhảy tab).'
+                                    : 'Đang phát bằng trình phát riêng — bấm “Tiếp theo” để chuyển tập. Nút “Bỏ qua giới thiệu”, chọn phụ đề và tốc độ nằm trong trình phát.'
+                                }
+                            </p>
                         )}
 
                         {!isLightOff && (
